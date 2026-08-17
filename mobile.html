@@ -2339,21 +2339,28 @@
     const events = [];
     for (let pg = 1; pg <= 3; pg++) {
       const flt = encodeURIComponent("(DAT_PUBLISHDATE>'" + tstr + " 00:00:00')");
-      const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=' + pg + '&pageSize=500&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=1&source=WEB&client=WEB';
-      try {
-        const r = await fetch(url);
-        const j = await r.json();
-        const rows = (j.result && j.result.data) || [];
-        for (const d of rows) {
-          const t = String(d.TITLE || '');
-          if (!t.includes('美国')) continue;
-          if (!KEY.some(k => t.includes(k))) continue;
-          if (EXCLUDE.some(k => t.includes(k))) continue;
-          const sim = ecoSimplify(t);
-          if (!sim) continue;
-          events.push({ date: String(d.DAT_PUBLISHDATE).slice(0, 10), time: (d.STR_PUBLISHTIME || '').slice(0, 5), name: sim.name, star: sim.star });
-        }
-      } catch (e) {}
+      const cb = '_fc_' + Date.now() + '_' + pg;
+      const base = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=' + pg + '&pageSize=500&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=1&source=WEB&client=WEB';
+      const j = await new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = base + '&callback=' + cb + '&_=' + Date.now();
+        let done = false;
+        window[cb] = (json) => { if (done) return; done = true; resolve(json); s.remove(); try { delete window[cb]; } catch (e) {} };
+        s.onerror = () => { if (!done) { done = true; resolve(null); s.remove(); } };
+        document.head.appendChild(s);
+        setTimeout(() => { if (!done) { done = true; resolve(null); s.remove(); } }, 8000);
+      });
+      if (!j) continue;
+      const rows = (j.result && j.result.data) || [];
+      for (const d of rows) {
+        const t = String(d.TITLE || '');
+        if (!t.includes('美国')) continue;
+        if (!KEY.some(k => t.includes(k))) continue;
+        if (EXCLUDE.some(k => t.includes(k))) continue;
+        const sim = ecoSimplify(t);
+        if (!sim) continue;
+        events.push({ date: String(d.DAT_PUBLISHDATE).slice(0, 10), time: (d.STR_PUBLISHTIME || '').slice(0, 5), name: sim.name, star: sim.star });
+      }
     }
     // 去重：同日期 + 同事件类别只保留一条
     const seen = new Set();
