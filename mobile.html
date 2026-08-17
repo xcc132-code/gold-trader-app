@@ -1009,16 +1009,40 @@
     const box = document.getElementById('newsSRBox');
     if (!box) return;
     const z = calcSRZones();
-    if (!z.price) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
-    const line = (x, color) => '<div class="data-row" style="padding:4px 0;">' +
-      '<span style="width:96px;color:var(--text-muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + x.label + '</span>' +
-      '<span style="flex:1;height:1px;background:' + color + ';opacity:0.55;margin:0 4px;"></span>' +
-      '<span style="width:66px;text-align:right;font-weight:600;color:' + color + ';font-family:var(--font-mono);font-size:11px;">' + fmt(x.level, 1) + '</span></div>';
-    let html = '<div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;">现价 ' + fmt(z.price, 1) + ' · 结构位+均线+斐波那契+枢轴点（共振位已合并）</div>';
-    z.resistances.slice(0, 4).forEach(x => { html += line(x, 'var(--down)'); });
-    html += '<div style="padding:5px 0;text-align:center;color:var(--gold-soft);font-weight:700;border-top:1px dashed rgba(232,181,79,0.35);border-bottom:1px dashed rgba(232,181,79,0.35);margin:3px 0;">— 现价 ' + fmt(z.price, 1) + ' —</div>';
-    z.supports.slice(0, 4).forEach(x => { html += line(x, 'var(--up)'); });
-    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">价格进入区域后看 4H K 线反应（吞没/Pin Bar 反转）再进场，不对单一线挂单。</div>';
+    if (!z.price || !z.resistances.length || !z.supports.length) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
+    const price = z.price;
+    const R = z.resistances[0];   // 最近阻力 = 做空区
+    const S = z.supports[0];      // 最近支撑 = 做多区
+    const atr = (h1State && h1State.atr) ? h1State.atr : (R.level - S.level) * 0.12;
+    const pos = (price - S.level) / ((R.level - S.level) || 1); // 0=在支撑 1=在阻力
+
+    // 入场建议（结合价格位置 + XAUUSD 4H 规律）
+    let advice, aColor;
+    if (pos < 0.3) {
+      advice = '✅ <b>做多时机</b>：现价接近支撑 ' + fmt(S.level, 1) + '，可做多<br>止损 ' + fmt(S.level - atr * 0.6, 1) + ' · 目标 ' + fmt(R.level, 1);
+      aColor = 'var(--up)';
+    } else if (pos > 0.7) {
+      advice = '🔻 <b>做空时机</b>：现价接近阻力 ' + fmt(R.level, 1) + '，可做空<br>止损 ' + fmt(R.level + atr * 0.6, 1) + ' · 目标 ' + fmt(S.level, 1);
+      aColor = 'var(--down)';
+    } else {
+      advice = '⏳ <b>等待回调</b>：现价居中<br>回调到 ' + fmt(S.level, 1) + ' 做多 · 反弹到 ' + fmt(R.level, 1) + ' 做空';
+      aColor = 'var(--gold-soft)';
+    }
+
+    const zone = (title, color, bg, zz, hint) =>
+      '<div style="background:' + bg + ';border-radius:8px;padding:8px 10px;margin:4px 0;">' +
+        '<div style="font-size:10px;color:' + color + ';font-weight:700;">' + title + '</div>' +
+        '<div style="font-size:20px;font-weight:800;color:' + color + ';font-family:var(--font-mono);line-height:1.2;">' + fmt(zz.level, 1) + '</div>' +
+        '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;line-height:1.4;">' + zz.label + '</div>' +
+        '<div style="font-size:9px;color:' + color + ';margin-top:2px;">' + hint + '</div>' +
+      '</div>';
+
+    let html = '';
+    html += zone('🔻 做空区（阻力）', 'var(--down)', 'rgba(242,87,76,0.10)', R, '反弹到此做空');
+    html += '<div style="text-align:center;padding:3px 0;color:var(--gold-soft);font-weight:800;font-size:12px;">— 现价 ' + fmt(price, 1) + ' —</div>';
+    html += zone('🟢 做多区（支撑）', 'var(--up)', 'rgba(33,178,143,0.10)', S, '回调到此做多');
+    html += '<div style="margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.05);font-size:10.5px;line-height:1.6;color:' + aColor + ';">' + advice + '</div>';
+    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">进入区域后看 4H K 线反应（吞没/Pin Bar 反转）再进场，不对单一线挂单。</div>';
     box.innerHTML = html;
   }
   async function fetchKlineViaEm() {
