@@ -2317,41 +2317,52 @@
         '<span style="font-size:9px;color:var(--gold);">' + jin10Star(it.star) + '</span>' +
         '</div>';
     }).join('');
-    if (pill) pill.textContent = jin10Events.length ? ('金十 · ' + jin10Events.length + ' 项') : '东财';
+    if (pill) pill.textContent = jin10Events.length ? ('未来 ' + jin10Events.length + ' 项') : '东财';
   }
-  async function loadJin10Calendar() {
-    // 拉未来 8 天金十财经日历，过滤美国重磅数据（JSONP 跨域）
+  function ecoSimplify(t) {
+    // 简化事件名 + 重要性星级
+    if (t.includes('利率决议') || t.includes('FOMC') || t.includes('联邦基金利率')) return { name: '美联储利率决议', star: 5 };
+    if (t.includes('非农')) return { name: '非农就业报告', star: 4 };
+    if (t.includes('CPI') || t.includes('消费者物价')) return { name: 'CPI 消费者物价指数', star: 4 };
+    if (t.includes('PCE') || t.includes('个人消费支出物价')) return { name: 'PCE 物价指数', star: 3 };
+    if (t.includes('GDP') || t.includes('国内生产')) return { name: 'GDP 国内生产总值', star: 3 };
+    if (t.includes('国债拍卖') || t.includes('拍卖')) return { name: '美国国债拍卖', star: 3 };
+    if (t.includes('失业率')) return { name: '失业率', star: 3 };
+    return null;
+  }
+  async function loadFutureCalendar() {
+    // 东财经济数据：分页查未来美国重磅数据（非农/CPI/FOMC/PCE/GDP/国债拍卖）
     const KEY = ['非农', 'CPI', '消费者物价', '利率决议', 'FOMC', '联邦基金', 'GDP', '国内生产', 'PCE', '个人消费', '国债', '拍卖', '失业率'];
-    const days = [];
-    for (let i = 0; i < 8; i++) {
-      const d = new Date(Date.now() + i * 86400000);
-      days.push(d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0'));
-    }
+    const EXCLUDE = ['持仓', '管理基金', '未平仓', '报告头寸', '期货', '期权', '库存', '原油', '粗钢', '红皮书', 'MBA', '外国投资者', '资本流动', '证券', '二手车', '能源', '食品', '住房', '住宅', '工业产出', '产能', '出口价格', '进口价格'];
+    const now = new Date();
+    const tstr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     const events = [];
-    for (const ds of days) {
-      const cb = '_j10_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-      const got = await new Promise((resolve) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn-rili.jin10.com/web_data/' + ds + '/economics.json?callback=' + cb + '&_=' + Date.now();
-        let done = false;
-        window[cb] = (j) => { if (done) return; done = true; resolve(j); s.remove(); try { delete window[cb]; } catch (e) {} };
-        s.onerror = () => { if (!done) { done = true; resolve(null); s.remove(); } };
-        document.head.appendChild(s);
-        setTimeout(() => { if (!done) { done = true; resolve(null); s.remove(); } }, 6000);
-      });
-      if (!got) continue;
-      const list = (got && got.data && got.data.economics) ? got.data.economics : (Array.isArray(got) ? got : []);
-      for (const it of list) {
-        const name = it.name || it.title || '';
-        const country = it.country || it.country_cn || '';
-        const time = it.time || it.pub_time || '';
-        const star = it.star != null ? it.star : (it.importance || 0);
-        if (country.indexOf('美国') >= 0 && KEY.some(k => name.indexOf(k) >= 0) && star >= 2) {
-          events.push({ date: ds, time: time, name: name, star: star });
+    for (let pg = 1; pg <= 3; pg++) {
+      const flt = encodeURIComponent("(DAT_PUBLISHDATE>'" + tstr + " 00:00:00')");
+      const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=' + pg + '&pageSize=500&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=1&source=WEB&client=WEB';
+      try {
+        const r = await fetch(url);
+        const j = await r.json();
+        const rows = (j.result && j.result.data) || [];
+        for (const d of rows) {
+          const t = String(d.TITLE || '');
+          if (!t.includes('美国')) continue;
+          if (!KEY.some(k => t.includes(k))) continue;
+          if (EXCLUDE.some(k => t.includes(k))) continue;
+          const sim = ecoSimplify(t);
+          if (!sim) continue;
+          events.push({ date: String(d.DAT_PUBLISHDATE).slice(0, 10), time: (d.STR_PUBLISHTIME || '').slice(0, 5), name: sim.name, star: sim.star });
         }
-      }
+      } catch (e) {}
     }
-    if (events.length) { jin10Events = events; renderEcoCalendar(); }
+    // 去重：同日期 + 同事件类别只保留一条
+    const seen = new Set();
+    const dedup = [];
+    for (const e of events) {
+      const k = e.date + '|' + e.name;
+      if (!seen.has(k)) { seen.add(k); dedup.push(e); }
+    }
+    if (dedup.length) { jin10Events = dedup; renderEcoCalendar(); }
   }
   function renderEcoCardsM(published) {
     if (!published || !published.length) return;
@@ -2441,8 +2452,8 @@
   }
   loadEcoCalendarM();
   setInterval(loadEcoCalendarM, 600000);
-  loadJin10Calendar();                        // 财经日历（金十数据，未来美国重磅数据）
-  setInterval(loadJin10Calendar, 600000);     // 10 分钟刷新
+  loadFutureCalendar();                       // 财经日历（东财分页，未来美国重磅数据）
+  setInterval(loadFutureCalendar, 600000);   // 10 分钟刷新
 
   /* ================================================================
      消息雷达（新浪 7x24 快讯，JSONP 跨域）
