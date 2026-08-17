@@ -1,0 +1,2146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // 移动端访问桌面版入口 → 自动切换到手机版（避免手机上看到桌面版布局）
+  (function () {
+    var ua = navigator.userAgent;
+    var isMobile = /Mobi|Android|iPhone|iPad|iPod|HarmonyOS/i.test(ua) ||
+      (/Macintosh/i.test(ua) && navigator.maxTouchPoints >= 5); // iPad 触屏
+    if (isMobile) { location.replace('mobile.html'); }
+  })();
+</script>
+<title>金势分析 Aurum Pro · 黄金外汇趋势分析台</title>
+<style>
+  /* ============ Design Tokens（取自 Ardot 设计稿） ============ */
+  :root {
+    --bg: #0A0F14;
+    --card: #141A21;
+    --card-deep: #0B0F14;
+    --border: #29303A;
+    --border-soft: #1C2430;
+    --text-primary: #F2F4F7;
+    --text-secondary: #99A3B2;
+    --text-muted: #667081;
+    --gold: #E8B54F;
+    --gold-soft: #F2D98C;
+    --up: #F2574C;      /* 红涨 */
+    --down: #21B28F;    /* 绿跌 */
+    --info: #52A0F7;
+    --sidebar-bg: #0E1319;
+    --nav-active: #1A2230;
+    --font-cn: "Sarasa Gothic SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-cn);
+    overflow: hidden;
+  }
+  .stage {
+    position: fixed; top: 0; left: 0;
+    transform-origin: top left;
+    width: 1440px; height: 1560px;
+    display: flex;
+    background: var(--bg);
+  }
+
+  /* ============ 左侧导航 ============ */
+  .sidebar {
+    width: 224px; flex-shrink: 0;
+    background: var(--sidebar-bg);
+    padding: 20px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding-bottom: 18px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+  .brand-cn { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+  .brand-en { font-size: 9px; font-weight: 600; color: var(--text-muted); letter-spacing: 2px; }
+  .nav-label {
+    font-size: 10px; color: var(--text-muted);
+    letter-spacing: 1px; padding: 10px 4px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    height: 40px; padding: 0 12px; border-radius: 10px;
+    color: var(--text-secondary); font-size: 13px;
+    cursor: pointer; user-select: none;
+    transition: background .15s, color .15s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .nav-item.active { background: var(--nav-active); color: var(--gold-soft); }
+  .nav-item svg { flex-shrink: 0; }
+  .nav-item.active svg path, .nav-item.active svg rect, .nav-item.active svg circle {
+    stroke: var(--gold) !important;
+  }
+  .sidebar-foot { margin-top: auto; }
+
+  /* ============ 主内容 ============ */
+  .main {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+    padding: 16px 24px 24px;
+    gap: 16px;
+    overflow-y: auto;
+    height: 100%;
+  }
+  .view { display: none; flex-direction: column; gap: 16px; }
+  .view.active { display: flex; }
+
+  /* 顶栏 */
+  .topbar { display: flex; align-items: center; justify-content: space-between; }
+  .page-title { font-size: 20px; font-weight: 700; }
+  .page-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .top-right { display: flex; align-items: center; gap: 12px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(232,181,79,0.12);
+    border: 1px solid rgba(232,181,79,0.35);
+    border-radius: 999px; padding: 5px 10px;
+    font-size: 10px; font-weight: 600; color: var(--gold-soft);
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 14px; border-radius: 8px;
+    background: var(--nav-active); border: 1px solid var(--border);
+    color: var(--text-secondary); font-size: 11px; font-family: var(--font-cn);
+    cursor: pointer; transition: background .15s;
+  }
+  .refresh-btn:hover { background: #222B3B; color: var(--text-primary); }
+  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .kpi-value.flash-up { animation: kflashUp 0.8s ease; }
+  .kpi-value.flash-down { animation: kflashDown 0.8s ease; }
+  @keyframes kflashUp { 0% { color: #F2D98C; text-shadow: 0 0 12px rgba(232,181,79,0.6); } 100% { } }
+  @keyframes kflashDown { 0% { color: #7CB8F7; text-shadow: 0 0 12px rgba(82,160,247,0.6); } 100% { } }
+
+  /* 卡片基础 */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .card-deep { background: var(--card-deep); border: 1px solid var(--border-soft); }
+
+  /* KPI 行 */
+  .kpi-row { display: flex; gap: 16px; }
+  .kpi-card {
+    flex: 1; min-width: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    height: 118px;
+  }
+  .kpi-label { font-size: 11px; color: var(--text-secondary); }
+  .kpi-value { font-family: var(--font-mono); font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); }
+  .kpi-sub.up { color: var(--up); }
+  .kpi-sub.down { color: var(--down); }
+  .tag {
+    display: inline-flex; align-items: center;
+    border-radius: 4px; padding: 2px 5px;
+    font-size: 10px; font-weight: 600;
+  }
+  .tag-up { background: rgba(242,87,76,0.15); color: var(--up); }
+  .tag-down { background: rgba(33,178,143,0.15); color: var(--down); }
+  .tag-gold { background: rgba(232,181,79,0.15); color: var(--gold-soft); }
+  .tag-info { background: rgba(82,160,247,0.15); color: #7CB8F7; }
+  .chg-up { color: var(--up); font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+
+  /* 图表卡 */
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; }
+  .chart-title { font-size: 14px; font-weight: 700; }
+  .chart-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .legend { display: flex; gap: 12px; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono); }
+  .legend-dot { width: 10px; height: 3px; border-radius: 2px; }
+  .chart-body { display: flex; gap: 12px; }
+  .chart-area {
+    flex: 1; background: var(--card-deep);
+    border: 1px solid var(--border-soft); border-radius: 10px;
+    padding: 12px; min-height: 230px;
+  }
+  .ind-panel { display: flex; flex-direction: column; gap: 10px; width: 200px; flex-shrink: 0; }
+  .ind-card {
+    background: var(--card-deep); border: 1px solid var(--border-soft);
+    border-radius: 10px; padding: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ind-title { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); }
+  .ind-card:last-child { height: 96px; }
+  .sig-strip { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sig {
+    display: flex; align-items: center; gap: 8px;
+    border-radius: 8px; padding: 6px 10px;
+    font-size: 10px; color: var(--text-secondary);
+  }
+  .sig-up { background: rgba(242,87,76,0.08); border: 1px solid rgba(242,87,76,0.3); }
+  .sig-gold { background: rgba(232,181,79,0.08); border: 1px solid rgba(232,181,79,0.3); }
+
+  /* 分区标题 */
+  .section-head { display: flex; align-items: center; justify-content: space-between; }
+  .section-title-wrap { display: flex; align-items: center; gap: 10px; }
+  .section-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .section-title { font-size: 15px; font-weight: 700; }
+  .section-more { font-size: 11px; color: var(--gold-soft); cursor: pointer; }
+  .badge-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 999px; padding: 4px 10px; font-size: 10px; font-weight: 600;
+  }
+
+  /* 周期切换 Tab */
+  .cycle-tab {
+    padding: 5px 16px; border-radius: 8px; font-size: 11px; font-weight: 600;
+    color: var(--text-muted); background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+  }
+  .cycle-tab.active { color: #0E1319; background: var(--gold); border-color: var(--gold); }
+
+  /* 经济数据卡 */
+  .eco-row { display: flex; gap: 16px; }
+  .eco-card {
+    flex: 1; min-width: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column; gap: 6px; justify-content: center;
+    height: 148px;
+  }
+  .eco-head { display: flex; align-items: center; justify-content: space-between; }
+  .eco-name { font-size: 12px; font-weight: 600; }
+  .eco-value-row { display: flex; align-items: baseline; gap: 14px; }
+  .eco-value { font-family: var(--font-mono); font-size: 24px; font-weight: 700; }
+  .eco-unit { font-size: 10px; color: var(--text-muted); }
+  .eco-compare { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+  .stars { display: flex; }
+  .stars .off { fill: var(--text-muted); }
+
+  /* 技术指标引擎 */
+  .ind-cats { display: flex; gap: 14px; }
+  .ind-cat {
+    flex: 1; min-width: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .ind-cat-head { display: flex; align-items: center; gap: 8px; }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .cat-name { font-size: 13px; font-weight: 600; }
+  .cat-sub { font-size: 10px; color: var(--text-muted); }
+  .ind-row {
+    background: transparent;
+    border: 1px solid var(--border-soft); border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .ind-row-head { display: flex; align-items: center; justify-content: space-between; }
+  .ind-name { font-size: 11px; font-weight: 600; }
+  .ind-tag { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+  .ind-desc { font-size: 9.5px; color: var(--text-muted); }
+
+  /* 消息雷达 */
+  .news-row { display: flex; gap: 14px; }
+  .news-list { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .news-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+    transition: background .15s;
+  }
+  .news-item:hover { background: #18202B; }
+  .news-cat {
+    width: 76px; height: 26px; border-radius: 6px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600;
+  }
+  .news-body { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .news-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .news-meta { display: flex; align-items: center; gap: 12px; }
+  .news-time { font-size: 10px; color: var(--text-muted); }
+  .news-impact { font-size: 9.5px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+  .judge-panel {
+    width: 330px; flex-shrink: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .judge-head { display: flex; align-items: center; justify-content: space-between; }
+  .judge-title { font-size: 13px; font-weight: 700; }
+  .judge-score-box {
+    background: var(--card-deep); border: 1px solid var(--border-soft);
+    border-radius: 10px; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .judge-score-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .judge-score-label { font-size: 10px; color: var(--text-secondary); }
+  .judge-score-val { font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--up); }
+  .score-bar { height: 8px; border-radius: 99px; background: var(--border-soft); overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 99px; background: var(--up); }
+  .judge-text { font-size: 11px; color: var(--text-secondary); line-height: 18px; }
+
+  /* ============ 多空预测视图 ============ */
+  .hero-card {
+    display: flex; align-items: center; gap: 28px;
+    background: linear-gradient(90deg, #1C2434 0%, #141A21 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    height: 180px;
+  }
+  .hero-left { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+  .hero-label { font-size: 12px; color: var(--text-muted); }
+  .hero-verdict { display: flex; align-items: center; gap: 10px; }
+  .hero-dir {
+    display: inline-flex; align-items: center;
+    background: rgba(242,87,76,0.16);
+    border-radius: 8px; padding: 6px 14px;
+    font-size: 17px; font-weight: 700; color: var(--up);
+  }
+  .hero-conf { font-family: var(--font-mono); font-size: 26px; font-weight: 700; }
+  .hero-desc { font-size: 11px; color: var(--text-secondary); }
+  .hero-meter { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+  .meter-labels { display: flex; justify-content: space-between; align-items: center; }
+  .meter-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .meter-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .meter-bar {
+    display: flex; height: 18px; border-radius: 99px;
+    background: var(--border-soft); overflow: hidden;
+  }
+  .meter-bull {
+    height: 100%;
+    background: linear-gradient(90deg, var(--up) 0%, #D14A3F 100%);
+  }
+  .meter-tick { width: 2px; background: var(--gold-soft); flex-shrink: 0; }
+  .meter-bear {
+    height: 100%;
+    background: linear-gradient(90deg, #159C78 0%, var(--down) 100%);
+  }
+  .meter-foot { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+
+  /* 理由面板 */
+  .reason-section { display: flex; gap: 16px; align-items: flex-start; }
+  .reason-panel {
+    flex: 1; min-width: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .reason-head { display: flex; align-items: center; justify-content: space-between; }
+  .reason-title-wrap { display: flex; align-items: center; gap: 8px; }
+  .reason-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+  .reason-title { font-size: 14px; font-weight: 700; }
+  .reason-count { font-size: 10px; color: var(--text-muted); }
+  .reason-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card-deep); border: 1px solid var(--border-soft);
+    border-radius: 8px; padding: 10px;
+  }
+  .weight-box {
+    width: 44px; height: 40px; border-radius: 6px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .weight-val { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+  .weight-label { font-size: 8px; color: var(--text-muted); }
+  .reason-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .reason-item-title { font-size: 12px; font-weight: 600; }
+  .reason-item-desc { font-size: 10px; color: var(--text-secondary); }
+
+  .dist-panel {
+    width: 280px; flex-shrink: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .dist-head { display: flex; align-items: center; justify-content: space-between; }
+  .dist-title { font-size: 14px; font-weight: 700; }
+  .dist-legend { display: flex; flex-direction: column; gap: 6px; }
+  .dist-legend-row { display: flex; align-items: center; justify-content: space-between; }
+  .dist-legend-left { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-secondary); }
+  .dist-legend-val { font-family: var(--font-mono); font-size: 10px; font-weight: 500; }
+  .dist-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  /* 时间维度 */
+  .time-row { display: flex; gap: 16px; }
+  .time-card {
+    flex: 1; min-width: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    height: 150px; justify-content: center;
+  }
+  .time-card-head { display: flex; align-items: center; justify-content: space-between; }
+  .time-tag { font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 5px; font-family: var(--font-mono); }
+  .time-dir { font-size: 13px; font-weight: 700; }
+  .time-bar { height: 8px; border-radius: 99px; background: var(--border-soft); overflow: hidden; }
+  .time-fill { height: 100%; border-radius: 99px; }
+  .time-foot { display: flex; align-items: center; justify-content: space-between; }
+  .time-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+  .time-desc { font-size: 10px; color: var(--text-muted); }
+
+  .disclaimer {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(232,181,79,0.07);
+    border: 1px solid rgba(232,181,79,0.25);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 10px; color: var(--text-secondary);
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <!-- ==================== 左侧导航 ==================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="7" width="14" height="9" rx="1.5" fill="#0E1319"/>
+          <rect x="3" y="7" width="14" height="3.5" rx="1.5" fill="#F2D98C"/>
+          <rect x="5.5" y="4" width="9" height="3" rx="1" fill="#0E1319"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-cn">金势分析</span>
+        <span class="brand-en">AURUM PRO</span>
+      </div>
+    </div>
+    <div class="nav-label">工作台</div>
+    <div class="nav-item active" data-view="overview">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="#E8B54F"/><rect x="6.5" y="4" width="3" height="10" rx="1" fill="#E8B54F"/><rect x="11" y="1" width="3" height="13" rx="1" fill="#E8B54F"/></svg>
+      市场总览
+    </div>
+    <div class="nav-item" data-view="eco">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14V6M6 14V2M10 14V9M14 14V4" stroke="#99A3B2" stroke-width="2" stroke-linecap="round"/></svg>
+      经济数据
+    </div>
+    <div class="nav-item" data-view="tech">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12L6 8L9 11L14 4" stroke="#99A3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 4H14V7" stroke="#99A3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      技术指标引擎
+    </div>
+    <div class="nav-item" data-view="prediction">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 12L7 8L9 10L13 5" stroke="#99A3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 5H13V7" stroke="#99A3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      多空预测
+    </div>
+    <div class="nav-item" data-view="news">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2C5 2 3 4.2 3 7.5V12L4.5 10.5H11.5L13 12V7.5C13 4.2 11 2 8 2Z" stroke="#99A3B2" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="11.5" r="1" fill="#F2574C"/></svg>
+      消息雷达
+    </div>
+    <div class="nav-item" data-view="journal">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 3H12C12.6 3 13 3.4 13 4V13L10.5 11.5L8 13L5.5 11.5L3 13V4C3 3.4 3.4 3 4 3Z" stroke="#99A3B2" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      交易日志
+    </div>
+    <div class="nav-item" data-view="settings">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="#99A3B2" stroke-width="1.5"/><path d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.2 3.2L4.3 4.3M11.7 11.7L12.8 12.8M3.2 12.8L4.3 11.7M11.7 4.3L12.8 3.2" stroke="#99A3B2" stroke-width="1.5" stroke-linecap="round"/></svg>
+      设置
+    </div>
+    <div class="nav-label" style="margin-top:12px;">数据连接</div>
+    <div class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#21B28F" stroke-width="1.5"/><path d="M8 5V8L10 10" stroke="#21B28F" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>行情源已连接</span>
+    </div>
+    <div class="sidebar-foot nav-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#99A3B2" stroke-width="1.5"/><path d="M8 4V9" stroke="#99A3B2" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.5" r="1" fill="#99A3B2"/></svg>
+      <span>v1.0 · 本地模型</span>
+    </div>
+  </aside>
+
+  <!-- ==================== 主内容 ==================== -->
+  <main class="main">
+
+    <!-- ========== 视图：市场总览 ========== -->
+    <section class="view active" id="view-overview">
+      <div class="topbar">
+        <div>
+          <div class="page-title">市场总览 · XAU/USD 现货黄金</div>
+          <div class="page-sub">经济数据 · 技术指标 · 消息面 三合一趋势研判</div>
+        </div>
+        <div class="top-right">
+          <div class="live-badge"><span class="live-dot"></span>实时行情 · 最后更新 <span id="clock1">--:--:--</span></div>
+          <button class="refresh-btn" id="refreshBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 7C11.5 9.5 9.5 11.5 7 11.5C5.2 11.5 3.7 10.4 3 8.8M2.5 7C2.5 4.5 4.5 2.5 7 2.5C8.8 2.5 10.3 3.6 11 5.2" stroke="#99A3B2" stroke-width="1.5" stroke-linecap="round"/><path d="M2 3.5V6H4.5" stroke="#99A3B2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            刷新数据
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI 行 -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">现货黄金 XAU/USD</div>
+          <div class="kpi-value" id="kpiPrice">2,418.63</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="chg-up" id="kpiChg">+18.42 (+0.77%)</span>
+            <span class="tag tag-up" id="kpiTag">多头偏强</span>
+          </div>
+          <div id="kpiGC" style="font-size:10px;color:var(--text-muted);margin-top:4px;">纽约期金 --（实时参考）</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">ATR(14) 平均真实波幅</div>
+          <div class="kpi-value" id="kpiAtr">24.60</div>
+          <div class="kpi-sub" id="kpiAtrSub">日波幅约 1.02% · 美盘时段偏高</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">ADX(14) 趋势强度</div>
+          <div class="kpi-value" id="kpiAdx">32.8</div>
+          <div><span class="tag tag-up" id="kpiAdxTag">强上升趋势 +DI 在上</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">RSI(14) 相对强弱</div>
+          <div class="kpi-value" id="kpiRsi">63.4</div>
+          <div class="kpi-sub" id="kpiRsiSub">偏强但未超买 · 50 上方多头</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">OBV 资金动能</div>
+          <div class="kpi-value" id="kpiObv">12.8M</div>
+          <div class="kpi-sub up" id="kpiObvSub">量价齐升 · 上升趋势确认</div>
+        </div>
+      </div>
+
+      <!-- 图表卡 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">黄金价格走势 · 日线</div>
+            <div class="chart-sub">EMA 9 / 21 / 50 · SMA 100 / 200 叠加</div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#F2D98C"></span>EMA9</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#52A0F7"></span>EMA21</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#21B28F"></span>SMA200</div>
+          </div>
+        </div>
+        <div class="chart-body">
+          <div class="chart-area">
+            <svg id="klineSvg" width="100%" height="100%" viewBox="0 0 820 230" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="display:block;height:100%;min-height:230px">
+              <line x1="0" y1="46" x2="820" y2="46" stroke="#1C2430" stroke-width="1"/>
+              <line x1="0" y1="92" x2="820" y2="92" stroke="#1C2430" stroke-width="1"/>
+              <line x1="0" y1="138" x2="820" y2="138" stroke="#1C2430" stroke-width="1"/>
+              <line x1="0" y1="184" x2="820" y2="184" stroke="#1C2430" stroke-width="1"/>
+              <path d="M0 196 L40 186 L80 190 L120 178 L160 168 L200 172 L240 158 L280 150 L320 155 L360 142 L400 132 L440 138 L480 126 L520 118 L560 124 L600 110 L640 102 L680 108 L720 92 L760 84 L800 78 L820 74" stroke="#F2D98C" stroke-width="1.6" fill="none"/>
+              <path d="M0 202 L40 194 L80 196 L120 186 L160 178 L200 182 L240 170 L280 163 L320 168 L360 156 L400 148 L440 153 L480 142 L520 135 L560 141 L600 128 L640 121 L680 126 L720 112 L760 105 L800 100 L820 96" stroke="#52A0F7" stroke-width="1.6" fill="none"/>
+              <path d="M0 210 L40 204 L80 206 L120 198 L160 192 L200 195 L240 186 L280 180 L320 184 L360 174 L400 168 L440 172 L480 163 L520 157 L560 162 L600 151 L640 146 L680 150 L720 138 L760 132 L800 128 L820 125" stroke="#21B28F" stroke-width="1.6" fill="none" stroke-dasharray="4 3"/>
+            </svg>
+          </div>
+          <div class="ind-panel">
+            <div class="ind-card">
+              <div class="ind-title">MACD (12,26,9)</div>
+              <svg width="100%" height="120" viewBox="0 0 176 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
+                <line x1="0" y1="60" x2="176" y2="60" stroke="#1C2430" stroke-width="1"/>
+                <rect x="6" y="48" width="7" height="12" rx="1" fill="#F2574C"/><rect x="17" y="40" width="7" height="20" rx="1" fill="#F2574C"/><rect x="28" y="32" width="7" height="28" rx="1" fill="#F2574C"/><rect x="39" y="38" width="7" height="22" rx="1" fill="#F2574C"/><rect x="50" y="44" width="7" height="16" rx="1" fill="#F2574C"/><rect x="61" y="30" width="7" height="30" rx="1" fill="#F2574C"/><rect x="72" y="26" width="7" height="34" rx="1" fill="#F2574C"/><rect x="83" y="22" width="7" height="38" rx="1" fill="#F2574C"/><rect x="94" y="34" width="7" height="26" rx="1" fill="#F2574C"/><rect x="105" y="50" width="7" height="10" rx="1" fill="#21B28F"/><rect x="116" y="56" width="7" height="4" rx="1" fill="#21B28F"/><rect x="127" y="68" width="7" height="8" rx="1" fill="#21B28F"/><rect x="138" y="76" width="7" height="16" rx="1" fill="#21B28F"/><rect x="149" y="82" width="7" height="22" rx="1" fill="#21B28F"/><rect x="160" y="86" width="7" height="26" rx="1" fill="#21B28F"/>
+                <path d="M0 46 C20 40 40 32 60 28 C80 24 100 22 120 30 C140 38 160 44 176 48" stroke="#F2D98C" stroke-width="1.4" fill="none"/>
+                <path d="M0 52 C20 48 40 44 60 42 C80 40 100 40 120 46 C140 52 160 56 176 58" stroke="#52A0F7" stroke-width="1.4" fill="none"/>
+              </svg>
+            </div>
+            <div class="ind-card">
+              <div class="ind-title">RSI (14)</div>
+              <svg width="100%" height="52" viewBox="0 0 176 52" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
+                <line x1="0" y1="10" x2="176" y2="10" stroke="#F2574C" stroke-width="0.8" stroke-dasharray="3 3"/>
+                <line x1="0" y1="42" x2="176" y2="42" stroke="#21B28F" stroke-width="0.8" stroke-dasharray="3 3"/>
+                <path d="M0 26 C15 28 30 22 45 20 C60 18 75 14 90 12 C105 10 120 12 135 16 C150 20 165 22 176 21" stroke="#F2D98C" stroke-width="1.6" fill="none"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="sig-strip">
+          <div class="sig sig-up">金叉：EMA21 上穿 EMA50，多头排列确认</div>
+          <div class="sig sig-gold">价格站上 SMA200 牛熊分界线，趋势确认</div>
+        </div>
+      </div>
+
+      <!-- 经济数据 -->
+      <div class="section-head">
+        <div class="section-title-wrap">
+          <div class="section-icon" style="background:rgba(232,181,79,0.15)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="5" width="3" height="7" rx="0.8" fill="#E8B54F"/><rect x="5.5" y="2.5" width="3" height="9.5" rx="0.8" fill="#E8B54F"/><rect x="9.5" y="7" width="3" height="5" rx="0.8" fill="#E8B54F"/></svg>
+          </div>
+          <span class="section-title">核心经济数据监测</span>
+        </div>
+        <span class="section-more">数据源：东方财富 · 已发布实时值 <span id="ecoUpdated"></span></span>
+      </div>
+      <div class="eco-row" id="ecoRow">
+        <div class="eco-card">
+          <div class="eco-head">
+            <span class="eco-name">美国非农就业人数</span>
+            <svg width="64" height="12" viewBox="0 0 64 12" fill="none"><path d="M6 0L7.5 4.1L12 4.2L8.5 6.8L9.8 10.9L6 8.5L2.2 10.9L3.5 6.8L0 4.2L4.5 4.1L6 0Z" fill="#E8B54F"/><path d="M22 0L23.5 4.1L28 4.2L24.5 6.8L25.8 10.9L22 8.5L18.2 10.9L19.5 6.8L16 4.2L20.5 4.1L22 0Z" fill="#E8B54F"/><path d="M38 0L39.5 4.1L44 4.2L40.5 6.8L41.8 10.9L38 8.5L34.2 10.9L35.5 6.8L32 4.2L36.5 4.1L38 0Z" fill="#E8B54F"/><path d="M54 0L55.5 4.1L60 4.2L56.5 6.8L57.8 10.9L54 8.5L50.2 10.9L51.5 6.8L48 4.2L52.5 4.1L54 0Z" fill="#5C6672"/></svg>
+          </div>
+          <div class="eco-value-row"><span class="eco-value" id="ecoNfp">57K</span><span class="eco-unit">新增就业（6月）</span></div>
+          <div class="eco-compare" id="ecoNfpFc">预期 -- · 前值 129K</div>
+          <div><span class="tag tag-up" id="ecoNfpTag">已发布 · 低于前值</span></div>
+        </div>
+        <div class="eco-card">
+          <div class="eco-head">
+            <span class="eco-name">美国核心 CPI</span>
+            <svg width="64" height="12" viewBox="0 0 64 12" fill="none"><path d="M6 0L7.5 4.1L12 4.2L8.5 6.8L9.8 10.9L6 8.5L2.2 10.9L3.5 6.8L0 4.2L4.5 4.1L6 0Z" fill="#E8B54F"/><path d="M22 0L23.5 4.1L28 4.2L24.5 6.8L25.8 10.9L22 8.5L18.2 10.9L19.5 6.8L16 4.2L20.5 4.1L22 0Z" fill="#E8B54F"/><path d="M38 0L39.5 4.1L44 4.2L40.5 6.8L41.8 10.9L38 8.5L34.2 10.9L35.5 6.8L32 4.2L36.5 4.1L38 0Z" fill="#E8B54F"/><path d="M54 0L55.5 4.1L60 4.2L56.5 6.8L57.8 10.9L54 8.5L50.2 10.9L51.5 6.8L48 4.2L52.5 4.1L54 0Z" fill="#5C6672"/></svg>
+          </div>
+          <div class="eco-value-row"><span class="eco-value" id="ecoCpi">2.6%</span><span class="eco-unit">核心CPI同比（6月）</span></div>
+          <div class="eco-compare" id="ecoCpiFc">前值 2.8%</div>
+          <div><span class="tag tag-up" id="ecoCpiTag">通胀降温 · 利多黄金</span></div>
+        </div>
+        <div class="eco-card">
+          <div class="eco-head">
+            <span class="eco-name">美联储利率决议</span>
+            <svg width="64" height="12" viewBox="0 0 64 12" fill="none"><path d="M6 0L7.5 4.1L12 4.2L8.5 6.8L9.8 10.9L6 8.5L2.2 10.9L3.5 6.8L0 4.2L4.5 4.1L6 0Z" fill="#E8B54F"/><path d="M22 0L23.5 4.1L28 4.2L24.5 6.8L25.8 10.9L22 8.5L18.2 10.9L19.5 6.8L16 4.2L20.5 4.1L22 0Z" fill="#E8B54F"/><path d="M38 0L39.5 4.1L44 4.2L40.5 6.8L41.8 10.9L38 8.5L34.2 10.9L35.5 6.8L32 4.2L36.5 4.1L38 0Z" fill="#E8B54F"/><path d="M54 0L55.5 4.1L60 4.2L56.5 6.8L57.8 10.9L54 8.5L50.2 10.9L51.5 6.8L48 4.2L52.5 4.1L54 0Z" fill="#E8B54F"/></svg>
+          </div>
+          <div class="eco-value-row"><span class="eco-value" id="ecoRate">3.75%</span><span class="eco-unit">联邦基金目标利率</span></div>
+          <div class="eco-compare" id="ecoRateFc">7/30 决议 · 维持不变</div>
+          <div><span class="tag tag-gold" id="ecoRateTag">利率维持 · 中性</span></div>
+        </div>
+        <div class="eco-card">
+          <div class="eco-head">
+            <span class="eco-name">美国 PCE 物价指数</span>
+            <svg width="64" height="12" viewBox="0 0 64 12" fill="none"><path d="M6 0L7.5 4.1L12 4.2L8.5 6.8L9.8 10.9L6 8.5L2.2 10.9L3.5 6.8L0 4.2L4.5 4.1L6 0Z" fill="#E8B54F"/><path d="M22 0L23.5 4.1L28 4.2L24.5 6.8L25.8 10.9L22 8.5L18.2 10.9L19.5 6.8L16 4.2L20.5 4.1L22 0Z" fill="#E8B54F"/><path d="M38 0L39.5 4.1L44 4.2L40.5 6.8L41.8 10.9L38 8.5L34.2 10.9L35.5 6.8L32 4.2L36.5 4.1L38 0Z" fill="#E8B54F"/><path d="M54 0L55.5 4.1L60 4.2L56.5 6.8L57.8 10.9L54 8.5L50.2 10.9L51.5 6.8L48 4.2L52.5 4.1L54 0Z" fill="#E8B54F"/></svg>
+          </div>
+          <div class="eco-value-row"><span class="eco-value" id="ecoPce">3.7%</span><span class="eco-unit">PCE同比（6月）</span></div>
+          <div class="eco-compare" id="ecoPceFc">前值 4.1%</div>
+          <div><span class="tag tag-up" id="ecoPceTag">通胀降温 · 利多黄金</span></div>
+        </div>
+      </div>
+
+      <!-- 经济日历：未来重要事件 -->
+      <div class="eco-card" style="height:auto;padding:14px;">
+        <div class="eco-head">
+          <span class="eco-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="#E8B54F" stroke-width="1.3"/><path d="M1.5 5H12.5" stroke="#E8B54F" stroke-width="1.3"/><path d="M4 0.5V3M10 0.5V3" stroke="#E8B54F" stroke-width="1.3" stroke-linecap="round"/></svg>
+            近期重要经济事件（发布时间实时更新）
+          </span>
+          <span class="badge-pill" style="background:rgba(232,181,79,0.12);border:1px solid rgba(232,181,79,0.3);color:#F2D98C;">已发布值已同步</span>
+        </div>
+        <div id="ecoFuture" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+          <div class="data-row" style="opacity:0.7;font-size:10px;color:var(--text-muted);">
+            <span style="width:90px;">发布日期</span>
+            <span style="width:60px;">时间</span>
+            <span style="flex:1;">事件</span>
+            <span style="width:70px;text-align:right;">预测值</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 技术指标引擎 -->
+      <div class="section-head">
+        <div class="section-title-wrap">
+          <div class="section-icon" style="background:rgba(82,160,247,0.16)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6.5L7 8.5L12 2.5" stroke="#52A0F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 2.5H12V4.5" stroke="#52A0F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="section-title">技术指标引擎 · 五大维度信号</span>
+        </div>
+        <span class="badge-pill" style="background:rgba(82,160,247,0.12);border:1px solid rgba(82,160,247,0.3);color:#7CB8F7;">17 个指标 · 实时计算</span>
+      </div>
+      <div class="ind-cats">
+        <div class="ind-cat">
+          <div class="ind-cat-head"><span class="cat-dot" style="background:#E8B54F"></span><span class="cat-name">趋势类指标</span></div>
+          <div class="cat-sub">判断方向与强度 · 底仓依据</div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">移动平均线 MA</span><span class="ind-tag tag-up">金叉 · 多头排列</span></div><div class="ind-desc">EMA9 > EMA21 > EMA50，价格沿 20 EMA 单边上行</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">MACD (12,26,9)</span><span class="ind-tag tag-up">DIF 上穿 DEA</span></div><div class="ind-desc">红柱放大 · 日线 4H 共振向上</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">ADX + DI (14)</span><span class="ind-tag tag-up">ADX 32.8 强趋势</span></div><div class="ind-desc">+DI(26.4) 在 -DI(14.2) 之上 · 只多不空</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">一目均衡表 Ichimoku</span><span class="ind-tag tag-up">价格在云层上方</span></div><div class="ind-desc">云层转红 · 转折线在基准线上方</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">抛物线 SAR</span><span class="ind-tag tag-up">K线在 SAR 上方</span></div><div class="ind-desc">SAR 提供动态止损 · 跟随上升趋势</div></div>
+        </div>
+        <div class="ind-cat">
+          <div class="ind-cat-head"><span class="cat-dot" style="background:#52A0F7"></span><span class="cat-name">动能震荡类指标</span></div>
+          <div class="cat-sub">超买超卖与衰竭 · 提前预警</div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">RSI (14)</span><span class="ind-tag tag-up">63.4 · 50 上方偏强</span></div><div class="ind-desc">上穿 50 转强 · 未触 70 超买区</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">随机指标 Stoch (5,3,3)</span><span class="ind-tag tag-gold">80 上方反复死叉</span></div><div class="ind-desc">强趋势中指标钝化 · 放弃逆势</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">CCI (20)</span><span class="ind-tag tag-up">+118 强势启动</span></div><div class="ind-desc">突破 +100 · 顺势追进</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">威廉指标 %R (14)</span><span class="ind-tag tag-gold">-42 中性区</span></div><div class="ind-desc">未触发极端值 · 等待确认</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">MFI (14)</span><span class="ind-tag tag-up">65.2 资金流入</span></div><div class="ind-desc">无顶背离 · 未见派发迹象</div></div>
+        </div>
+        <div class="ind-cat">
+          <div class="ind-cat-head"><span class="cat-dot" style="background:#E8B54F"></span><span class="cat-name">波动率与通道类指标</span></div>
+          <div class="cat-sub">定义运行区间与目标</div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">布林带 (20, 2σ)</span><span class="ind-tag tag-up">突破上轨运行</span></div><div class="ind-desc">带宽收窄后放量突破 · 单边行情沿轨奔跑</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">ATR (14)</span><span class="ind-tag tag-gold">24.6 · 波动正常</span></div><div class="ind-desc">止损参考 1.5×ATR ≈ 37 美元</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">唐奇安 / 肯特纳通道</span><span class="ind-tag tag-up">突破 20 日高点</span></div><div class="ind-desc">唐奇安上轨 2,436 · 肯特纳平滑过滤</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">波动率预警</span><span class="ind-tag tag-gold">美盘 ATR 跳升</span></div><div class="ind-desc">参考近 5 根 K 线真实波幅设止损</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">带宽挤压 (Squeeze)</span><span class="ind-tag tag-info">ADX 14.8 低位</span></div><div class="ind-desc">暴风雨前宁静 · 关注突破方向</div></div>
+        </div>
+        <div class="ind-cat">
+          <div class="ind-cat-head"><span class="cat-dot" style="background:#21B28F"></span><span class="cat-name">量能与持仓情绪类指标</span></div>
+          <div class="cat-sub">量价验证 · 资金流向</div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">成交量 / 跳动量</span><span class="ind-tag tag-up">放量上涨</span></div><div class="ind-desc">价升量增 · 上涨扎实</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">能量潮 OBV</span><span class="ind-tag tag-up">12.8M 创阶段新高</span></div><div class="ind-desc">OBV 先于价格创新高 · 无背离</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">COT 持仓报告</span><span class="ind-tag tag-gold">净多头 78% 高位</span></div><div class="ind-desc">投机净多头达极值 · 警惕拥挤踩踏</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">量价背离监控</span><span class="ind-tag tag-down">暂无异动</span></div><div class="ind-desc">突破关键阻力需放量确认</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">持仓结构</span><span class="ind-tag tag-up">商业空头减持</span></div><div class="ind-desc">矿山空头平仓 · 支撑金价</div></div>
+        </div>
+        <div class="ind-cat">
+          <div class="ind-cat-head"><span class="cat-dot" style="background:#F2574C"></span><span class="cat-name">支撑阻力与斐波那契</span></div>
+          <div class="cat-sub">入场区与目标测算</div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">斐波那契回撤</span><span class="ind-tag tag-up">0.618 强共振区</span></div><div class="ind-desc">与 SMA50、前低、枢轴点重合 · 极佳入场区</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">斐波那契扩展</span><span class="ind-tag tag-up">1.618 目标 2,512</span></div><div class="ind-desc">1.272 / 1.618 关键获利区</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">枢轴点 Pivot</span><span class="ind-tag tag-gold">R1 2,431 / S1 2,388</span></div><div class="ind-desc">美盘时段走势常精确反应枢轴位</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">整数关口</span><span class="ind-tag tag-gold">2,400 关口争夺</span></div><div class="ind-desc">金价对整数关口极尊重 · 算法交易聚集</div></div>
+          <div class="ind-row"><div class="ind-row-head"><span class="ind-name">卡玛利拉枢轴</span><span class="ind-tag tag-gold">R3 2,458</span></div><div class="ind-desc">5 分钟反转 K 线可结合使用</div></div>
+        </div>
+      </div>
+
+      <!-- 消息雷达 -->
+      <div class="section-head">
+        <div class="section-title-wrap">
+          <div class="section-icon" style="background:rgba(242,87,76,0.16)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7H3.2L4.5 3.2L6.8 10.5L8.6 5.8L9.8 8.2H11.5" stroke="#F2574C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="section-title">黄金消息雷达 · 消息面研判</span>
+        </div>
+        <span class="badge-pill" style="background:rgba(242,87,76,0.12);border:1px solid rgba(242,87,76,0.3);color:var(--up);" id="newsBadge"><span class="live-dot" style="background:var(--up)"></span>消息面实时同步中</span>
+      </div>
+      <div class="news-row">
+        <div class="news-list" id="newsList">
+          <div class="news-item" style="opacity:0.65;">
+            <div class="news-cat" style="background:rgba(128,128,128,0.14);color:var(--text-muted)">加载中</div>
+            <div class="news-body">
+              <div class="news-title">正在同步新浪 7x24 全球财经快讯…</div>
+              <div class="news-meta"><span class="news-time">数据源连接中</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="judge-panel">
+          <div class="judge-head">
+            <span class="judge-title">AI 综合研判</span>
+            <span class="tag tag-up" id="judgeTag" style="padding:3px 8px;font-size:10px;border-radius:6px;">偏多</span>
+          </div>
+          <div class="judge-score-box">
+            <div class="judge-score-row"><span class="judge-score-label">消息面多空净得分</span><span class="judge-score-val" id="judgeScore">+5.7</span></div>
+            <div class="score-bar"><div class="score-fill" id="judgeBar" style="width:68%"></div></div>
+          </div>
+          <div class="judge-text" id="judgeText">基于实时快讯的利多/利空统计自动更新。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 视图：多空预测 ========== -->
+    <section class="view" id="view-prediction">
+      <div class="topbar">
+        <div>
+          <div class="page-title">黄金价格 · 多空预测</div>
+          <div class="page-sub">综合经济数据 · 技术指标 · 消息面 的量化方向研判</div>
+        </div>
+        <div class="top-right">
+          <div class="live-badge"><span class="live-dot"></span>模型更新 <span id="clock2">--:--:--</span></div>
+          <button class="refresh-btn" id="refreshBtn2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 7C11.5 9.5 9.5 11.5 7 11.5C5.2 11.5 3.7 10.4 3 8.8M2.5 7C2.5 4.5 4.5 2.5 7 2.5C8.8 2.5 10.3 3.6 11 5.2" stroke="#99A3B2" stroke-width="1.5" stroke-linecap="round"/><path d="M2 3.5V6H4.5" stroke="#99A3B2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            刷新模型
+          </button>
+        </div>
+      </div>
+
+      <!-- 综合方向研判主卡 -->
+      <div class="hero-card">
+        <div class="hero-left">
+          <div class="hero-label">综合研判方向 <span class="hero-period" id="pdPeriodTag" style="font-size:10px;color:var(--text-muted);margin-left:6px;">4H 级别 · 实时</span></div>
+          <div class="hero-verdict">
+            <span class="hero-dir" id="pdDir">看多 BUY</span>
+            <span class="hero-conf" id="pdConf">62%</span>
+          </div>
+          <div class="hero-desc" id="pdDesc">4H 指标实时计算中…</div>
+        </div>
+        <div class="hero-meter">
+          <div class="meter-labels">
+            <div class="meter-label"><span class="meter-dot" style="background:var(--up)"></span>看多力量 <span id="pdBull">62.0%</span></div>
+            <div class="meter-label"><span class="meter-dot" style="background:var(--down)"></span>看空力量 <span id="pdBear">38.0%</span></div>
+          </div>
+          <div class="meter-bar">
+            <div class="meter-bull" id="pdMeterBull" style="width:62%"></div>
+            <div class="meter-tick"></div>
+            <div class="meter-bear" id="pdMeterBear" style="width:38%"></div>
+          </div>
+          <div class="meter-foot"><span>0%</span><span>多空均衡 50%</span><span>100%</span></div>
+        </div>
+      </div>
+
+      <!-- 周期切换：短线5分钟 / 中线4小时 / 长线日线 -->
+      <div style="display:flex;gap:8px;align-items:center;margin:2px 0 4px;">
+        <span style="font-size:11px;color:var(--text-muted);margin-right:4px;">技术周期</span>
+        <span class="cycle-tab" id="cycQM5" onclick="setCycleQ('m5')">5分钟</span>
+        <span class="cycle-tab active" id="cycQH1" onclick="setCycleQ('h1')">4小时</span>
+        <span class="cycle-tab" id="cycQDay" onclick="setCycleQ('day')">日线</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-muted);" id="pdCycleNote">切换周期实时更新方向/目标/依据</span>
+      </div>
+
+      <!-- 预测 KPI 行 -->
+      <div class="kpi-row">
+        <div class="kpi-card" style="height:108px">
+          <div class="kpi-label">1H 看多目标位</div>
+          <div class="kpi-value" style="color:var(--up)" id="pdT1">2,450.00</div>
+          <div class="kpi-sub" id="pdT1Sub">现价 + 1.5×1H ATR</div>
+        </div>
+        <div class="kpi-card" style="height:108px">
+          <div class="kpi-label">1H 看空目标位</div>
+          <div class="kpi-value" style="color:var(--down)" id="pdT2">2,356.80</div>
+          <div class="kpi-sub" id="pdT2Sub">现价 - 1.5×1H ATR</div>
+        </div>
+        <div class="kpi-card" style="height:108px">
+          <div class="kpi-label">预测周期</div>
+          <div class="kpi-value" id="pdPeriod">4H 级别</div>
+          <div class="kpi-sub" id="pdPeriodSub">小时级趋势 · 每分钟更新</div>
+        </div>
+        <div class="kpi-card" style="height:108px">
+          <div class="kpi-label">数据源</div>
+          <div class="kpi-value" style="font-size:20px;color:var(--gold)" id="pdSource">COMEX 4H</div>
+          <div class="kpi-sub" id="pdSourceSub">更新时间 --:--:--</div>
+        </div>
+        <div class="kpi-card" style="height:108px">
+          <div class="kpi-label">1H RSI</div>
+          <div class="kpi-value" id="pdRsi">--</div>
+          <div class="kpi-sub" id="pdRsiSub">4H 级别相对强弱</div>
+        </div>
+      </div>
+
+      <!-- 多空理由对比 -->
+      <div class="reason-section">
+        <div class="reason-panel">
+          <div class="reason-head">
+            <div class="reason-title-wrap">
+              <span class="reason-badge" style="background:rgba(242,87,76,0.16);color:var(--up)">看多</span>
+              <span class="reason-title">看多理由 · Bull Case</span>
+            </div>
+            <span class="reason-count">5 项理由 · 权重 62%</span>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(242,87,76,0.12)"><span class="weight-val" style="color:var(--up)">28%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">美联储降息周期开启</div><div class="reason-item-desc">9 月降息概率升至 72%，实际利率下行利好零息资产黄金</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(242,87,76,0.12)"><span class="weight-val" style="color:var(--up)">24%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">地缘政治避险需求</div><div class="reason-item-desc">中东局势紧张升级，避险资金持续流入黄金 ETF</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(242,87,76,0.12)"><span class="weight-val" style="color:var(--up)">20%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">央行持续购金支撑</div><div class="reason-item-desc">全球央行连续 18 个月净买入，官方储备多元化趋势</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(242,87,76,0.12)"><span class="weight-val" style="color:var(--up)">16%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">技术面多头排列</div><div class="reason-item-desc">MA 金叉 + MACD 多头 + 价格站上 SMA200</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(242,87,76,0.12)"><span class="weight-val" style="color:var(--up)">12%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">油价上行推升通胀对冲</div><div class="reason-item-desc">WTI 突破 84 美元，通胀对冲买盘活跃</div></div>
+          </div>
+        </div>
+
+        <div class="dist-panel">
+          <div class="dist-head">
+            <span class="dist-title">多空力量来源</span>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#667081" stroke-width="1.5"/><path d="M9 2V9L13 13" stroke="#E8B54F" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <svg width="100%" height="160" viewBox="0 0 248 160" xmlns="http://www.w3.org/2000/svg" style="display:block">
+            <path d="M124 44 A 60 60 0 0 1 202 100" stroke="#F2574C" stroke-width="16" stroke-linecap="round"/>
+            <path d="M202 100 A 60 60 0 0 1 168 142" stroke="#E8B54F" stroke-width="16" stroke-linecap="round"/>
+            <path d="M168 142 A 60 60 0 0 1 70 142" stroke="#21B28F" stroke-width="16" stroke-linecap="round"/>
+            <path d="M70 142 A 60 60 0 0 1 46 100" stroke="#52A0F7" stroke-width="16" stroke-linecap="round"/>
+            <circle cx="124" cy="100" r="38" fill="#141A21"/>
+            <text x="124" y="97" text-anchor="middle" fill="#F2F4F7" font-size="20" font-weight="700" font-family="JetBrains Mono, monospace">62%</text>
+            <text x="124" y="116" text-anchor="middle" fill="#667081" font-size="10">看多概率</text>
+          </svg>
+          <div class="dist-legend">
+            <div class="dist-legend-row"><div class="dist-legend-left"><span class="dist-dot" style="background:#F2574C"></span>降息预期</div><span class="dist-legend-val">22%</span></div>
+            <div class="dist-legend-row"><div class="dist-legend-left"><span class="dist-dot" style="background:#E8B54F"></span>地缘避险</div><span class="dist-legend-val">18%</span></div>
+            <div class="dist-legend-row"><div class="dist-legend-left"><span class="dist-dot" style="background:#21B28F"></span>央行购金</div><span class="dist-legend-val">15%</span></div>
+            <div class="dist-legend-row"><div class="dist-legend-left"><span class="dist-dot" style="background:#52A0F7"></span>技术面</div><span class="dist-legend-val">7%</span></div>
+          </div>
+        </div>
+
+        <div class="reason-panel">
+          <div class="reason-head">
+            <div class="reason-title-wrap">
+              <span class="reason-badge" style="background:rgba(33,178,143,0.16);color:var(--down)">看空</span>
+              <span class="reason-title">看空理由 · Bear Case</span>
+            </div>
+            <span class="reason-count">5 项理由 · 权重 38%</span>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(33,178,143,0.12)"><span class="weight-val" style="color:var(--down)">14%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">美元指数阶段性反弹</div><div class="reason-item-desc">美元走强压制以美元计价的黄金价格</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(33,178,143,0.12)"><span class="weight-val" style="color:var(--down)">11%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">风险偏好回升分流</div><div class="reason-item-desc">美股创新高吸引资金，黄金避险需求边际减弱</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(33,178,143,0.12)"><span class="weight-val" style="color:var(--down)">8%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">COT 持仓拥挤度高</div><div class="reason-item-desc">投机净多头 78% 历史极值，回调风险积聚</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(33,178,143,0.12)"><span class="weight-val" style="color:var(--down)">5%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">获利了结压力</div><div class="reason-item-desc">金价接近历史高位，短线多头止盈意愿上升</div></div>
+          </div>
+          <div class="reason-item">
+            <div class="weight-box" style="background:rgba(33,178,143,0.12)"><span class="weight-val" style="color:var(--down)">4%</span><span class="weight-label">权重</span></div>
+            <div class="reason-body"><div class="reason-item-title">通胀粘性超预期</div><div class="reason-item-desc">若 CPI 反弹将延后降息，打压黄金短期走势</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 持仓量与资金流向（COMEX 库存 / 净持仓） -->
+      <div class="section-head">
+        <div class="section-title-wrap">
+          <div class="section-icon" style="background:rgba(33,178,143,0.16)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#21B28F" stroke-width="1.8"/><path d="M7 3.5V7L9 8.5" stroke="#21B28F" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <span class="section-title" style="font-size:15px;">持仓量与资金流向 · COMEX 国际黄金</span>
+        </div>
+        <span class="badge-pill" style="background:rgba(33,178,143,0.12);border:1px solid rgba(33,178,143,0.3);color:var(--down);" id="pdHoldBadge">持仓数据同步中</span>
+      </div>
+      <div class="kpi-row" id="pdHoldRow" style="margin-bottom:4px;">
+        <div class="kpi-card" style="height:104px">
+          <div class="kpi-label">COMEX 黄金库存</div>
+          <div class="kpi-value" id="pdHStock">--</div>
+          <div class="kpi-sub" id="pdHStockSub">环比变化计算中</div>
+        </div>
+        <div class="kpi-card" style="height:104px">
+          <div class="kpi-label">COMEX 净持仓</div>
+          <div class="kpi-value" id="pdHNet">--</div>
+          <div class="kpi-sub" id="pdHNetSub">资金净流入/流出</div>
+        </div>
+        <div class="kpi-card" style="height:104px">
+          <div class="kpi-label">净持仓市值</div>
+          <div class="kpi-value" style="font-size:20px" id="pdHNetDollar">--</div>
+          <div class="kpi-sub">美元计价 · 持仓资金规模</div>
+        </div>
+        <div class="kpi-card" style="height:104px">
+          <div class="kpi-label">持仓方向</div>
+          <div class="kpi-value" id="pdHDir" style="font-size:20px">--</div>
+          <div class="kpi-sub" id="pdHDirSub">库存↓+净多↑ = 资金流入</div>
+        </div>
+        <div class="kpi-card" style="height:104px">
+          <div class="kpi-label">SPDR 黄金ETF持仓</div>
+          <div class="kpi-value" style="font-size:20px" id="pdHSpdr">--</div>
+          <div class="kpi-sub" id="pdHSpdrSub">全球最大黄金ETF · 日频更新</div>
+        </div>
+      </div>
+
+      <!-- 时间维度 -->
+      <div class="section-head">
+        <div class="section-title-wrap">
+          <span class="section-title" style="font-size:15px;">时间维度预测 · 短期 / 中期 / 长期</span>
+        </div>
+        <span class="section-more" style="color:var(--text-muted);font-size:10px;">方向概率随行情动态更新</span>
+      </div>
+      <div class="time-row">
+        <div class="time-card">
+          <div class="time-card-head"><span class="time-tag" style="background:rgba(242,87,76,0.16);color:var(--up)">1-2 周</span><span class="time-dir" style="color:var(--up)">看多</span></div>
+          <div class="time-bar"><div class="time-fill" style="width:58%;background:var(--up)"></div></div>
+          <div class="time-foot"><span class="time-pct">58% 看多</span><span class="time-desc">4H 级别</span></div>
+        </div>
+        <div class="time-card">
+          <div class="time-card-head"><span class="time-tag" style="background:rgba(232,181,79,0.16);color:var(--gold)">1-3 月</span><span class="time-dir" style="color:var(--up)">看多</span></div>
+          <div class="time-bar"><div class="time-fill" style="width:64%;background:var(--up)"></div></div>
+          <div class="time-foot"><span class="time-pct">64% 看多</span><span class="time-desc">日线级别</span></div>
+        </div>
+        <div class="time-card">
+          <div class="time-card-head"><span class="time-tag" style="background:rgba(33,178,143,0.16);color:var(--down)">6-12 月</span><span class="time-dir" style="color:var(--gold)">中性偏多</span></div>
+          <div class="time-bar"><div class="time-fill" style="width:52%;background:var(--gold)"></div></div>
+          <div class="time-foot"><span class="time-pct">52% 偏多</span><span class="time-desc">周线级别</span></div>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0"><path d="M8 2L15 14H1L8 2Z" stroke="#E8B54F" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 7V10" stroke="#E8B54F" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="12" r="0.8" fill="#E8B54F"/></svg>
+        风险提示：预测模型基于历史数据与当前市场环境，不构成投资建议。黄金价格受突发地缘事件、政策转向等不可预见因素影响，请结合自身风险承受能力审慎决策。
+      </div>
+    </section>
+
+    <!-- ========== 占位视图（后续扩展） ========== -->
+    <section class="view" id="view-eco">
+      <div class="topbar"><div><div class="page-title">经济数据日历</div><div class="page-sub">非农 · CPI · 利率决议 · PCE 等核心数据全景</div></div></div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:12px;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="4" y="10" width="40" height="32" rx="4" stroke="#29303A" stroke-width="2"/><path d="M4 18H44" stroke="#29303A" stroke-width="2"/><rect x="12" y="26" width="6" height="10" rx="1" fill="#E8B54F"/><rect x="21" y="22" width="6" height="14" rx="1" fill="#E8B54F"/><rect x="30" y="28" width="6" height="8" rx="1" fill="#E8B54F"/></svg>
+        <div style="font-size:14px;font-weight:600;">经济数据详情页 · 规划中</div>
+        <div style="font-size:11px;color:var(--text-muted);">此处将展示完整数据日历、历史走势与事件影响统计</div>
+      </div>
+    </section>
+    <section class="view" id="view-tech">
+      <div class="topbar"><div><div class="page-title">技术指标引擎</div><div class="page-sub">五大类 17+ 指标参数配置与信号历史</div></div></div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:12px;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M6 34L16 24L22 30L42 10" stroke="#52A0F7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M34 10H42V18" stroke="#52A0F7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div style="font-size:14px;font-weight:600;">指标详情页 · 规划中</div>
+        <div style="font-size:11px;color:var(--text-muted);">此处将支持指标参数调整、信号历史回溯与自定义组合</div>
+      </div>
+    </section>
+    <section class="view" id="view-news">
+      <div class="topbar"><div><div class="page-title">消息雷达</div><div class="page-sub">地缘 · 油价 · 央行讲话 · 全球市场消息流</div></div></div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:12px;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M24 8C14 8 9 14 9 21V34L13.5 29.5H34.5L39 34V21C39 14 34 8 24 8Z" stroke="#F2574C" stroke-width="2" stroke-linejoin="round"/><circle cx="24" cy="33" r="2" fill="#F2574C"/></svg>
+        <div style="font-size:14px;font-weight:600;">消息雷达详情页 · 规划中</div>
+        <div style="font-size:11px;color:var(--text-muted);">此处将展示全量消息流、情绪指标与历史消息影响回溯</div>
+      </div>
+    </section>
+    <section class="view" id="view-journal">
+      <div class="topbar"><div><div class="page-title">交易日志</div><div class="page-sub">记录每一次交易决策与复盘</div></div></div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:12px;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M12 9H36C37.1 9 38 9.9 38 11V39L31.5 34.5L24 39L16.5 34.5L10 39V11C10 9.9 10.9 9 12 9Z" stroke="#99A3B2" stroke-width="2" stroke-linejoin="round"/></svg>
+        <div style="font-size:14px;font-weight:600;">交易日志页 · 规划中</div>
+        <div style="font-size:11px;color:var(--text-muted);">此处将支持交易记录、盈亏统计与复盘笔记</div>
+      </div>
+    </section>
+    <section class="view" id="view-settings">
+      <div class="topbar"><div><div class="page-title">设置</div><div class="page-sub">行情源 · 指标参数 · 通知偏好</div></div></div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:12px;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="8" stroke="#99A3B2" stroke-width="2"/><path d="M24 4V8M24 40V44M4 24H8M40 24H44M10 10L13 13M35 35L38 38M10 38L13 35M35 13L38 10" stroke="#99A3B2" stroke-width="2" stroke-linecap="round"/></svg>
+        <div style="font-size:14px;font-weight:600;">设置页 · 规划中</div>
+        <div style="font-size:11px;color:var(--text-muted);">此处将支持数据源接入、指标默认参数与消息推送配置</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  /* ============ 视图切换 ============ */
+  const navItems = document.querySelectorAll('.nav-item[data-view]');
+  const views = document.querySelectorAll('.view');
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      navItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const target = item.dataset.view;
+      views.forEach(v => v.classList.toggle('active', v.id === 'view-' + target));
+      document.querySelector('.main').scrollTop = 0;
+    });
+  });
+
+  /* ============ 时钟 ============ */
+  function tick() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const str = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    const c1 = document.getElementById('clock1');
+    const c2 = document.getElementById('clock2');
+    if (c1) c1.textContent = str;
+    if (c2) c2.textContent = str;
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* ============ 刷新动效 ============ */
+  document.getElementById('refreshBtn')?.addEventListener('click', function() {
+    this.classList.add('spinning');
+    setTimeout(() => this.classList.remove('spinning'), 900);
+  });
+  document.getElementById('refreshBtn2')?.addEventListener('click', function() {
+    this.classList.add('spinning');
+    setTimeout(() => this.classList.remove('spinning'), 900);
+  });
+
+  /* ============ 等比缩放适配窗口 ============ */
+  function scaleStage() {
+    const stage = document.getElementById('stage');
+    const dw = 1440, dh = 1560;
+    const scale = Math.min(window.innerWidth / dw, window.innerHeight / dh);
+    stage.style.transform = 'scale(' + scale + ')';
+    stage.style.transformOrigin = 'top left';
+  }
+  window.addEventListener('resize', scaleStage);
+  scaleStage();
+
+  /* ================================================================
+     实时行情引擎（与手机版共用逻辑）
+     · 现货：腾讯 qt.gtimg.cn/q=hf_XAU（伦敦金，CORS 开放）
+     · K线：东方财富 push2his / secid=101.GC00Y（COMEX黄金，多域名重试）
+     ================================================================ */
+  const fmtQ = (v, d = 2) => Number(v).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const clampQ = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  function calcSMA(arr, period) {
+    if (arr.length < period) return null;
+    return arr.slice(-period).reduce((a, b) => a + b, 0) / period;
+  }
+  function calcEMA(arr, period) {
+    if (arr.length < period) return null;
+    const k = 2 / (period + 1);
+    let ema = arr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    for (let i = period; i < arr.length; i++) ema = arr[i] * k + ema * (1 - k);
+    return ema;
+  }
+  function calcRSI(arr, period = 14) {
+    if (arr.length < period + 1) return null;
+    let gain = 0, loss = 0;
+    for (let i = arr.length - period; i < arr.length; i++) {
+      const d = arr[i] - arr[i - 1];
+      if (d > 0) gain += d; else loss -= d;
+    }
+    gain /= period; loss /= period;
+    if (loss === 0) return 100;
+    return 100 - 100 / (1 + gain / loss);
+  }
+  function calcATR(klines, period = 14) {
+    if (klines.length < period + 1) return null;
+    let trs = [];
+    for (let i = klines.length - period; i < klines.length; i++) {
+      const k = klines[i], prev = klines[i - 1];
+      trs.push(Math.max(k.h - k.l, Math.abs(k.h - prev.c), Math.abs(k.l - prev.c)));
+    }
+    return trs.reduce((a, b) => a + b, 0) / period;
+  }
+  function calcADX(klines, period = 14) {
+    if (klines.length < period * 2 + 1) return null;
+    const start = klines.length - period * 2;
+    let pdiSum = 0, mdiSum = 0;
+    for (let i = start + 1; i < klines.length; i++) {
+      const k = klines[i], prev = klines[i - 1];
+      const upMove = k.h - prev.h, downMove = prev.l - k.l;
+      const plusDM = (upMove > downMove && upMove > 0) ? upMove : 0;
+      const minusDM = (downMove > upMove && downMove > 0) ? downMove : 0;
+      const tr = Math.max(k.h - k.l, Math.abs(k.h - prev.c), Math.abs(k.l - prev.c));
+      pdiSum += plusDM / (tr || 1);
+      mdiSum += minusDM / (tr || 1);
+    }
+    const pdi = 100 * pdiSum / (pdiSum + mdiSum || 1);
+    const mdi = 100 * mdiSum / (pdiSum + mdiSum || 1);
+    return { adx: Math.abs(pdi - mdi), pdi, mdi };
+  }
+  function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
+    const emaFast = calcEMA(closes, fast), emaSlow = calcEMA(closes, slow);
+    if (emaFast == null || emaSlow == null) return null;
+    const dif = emaFast - emaSlow;
+    return { dif, dea: dif * 0.9, hist: dif * 0.1 };
+  }
+
+  let tencentFrozenQ = false, lastTencentTsQ = '', lastTencentPriceQ = 0, frozenCheckQ = 0, lastFreezeRecoverQ = 0;
+  async function fetchQuoteQ() {
+    // 冻结恢复：伦敦盘收盘冻结后，每 60 秒尝试恢复腾讯
+    if (tencentFrozenQ && Date.now() - lastFreezeRecoverQ > 60000) {
+      tencentFrozenQ = false; frozenCheckQ = 0; lastFreezeRecoverQ = Date.now();
+    }
+    if (!tencentFrozenQ) {
+      try {
+        const resp = await fetch('https://qt.gtimg.cn/q=hf_XAU&_=' + Date.now());
+        const buf = await resp.arrayBuffer();
+        const txt = new TextDecoder('gbk').decode(buf);
+        const raw = txt.split('"')[1];
+        if (raw) {
+          const d = raw.split(',');
+          const ts = d[6], price = +d[0];
+          if (ts === lastTencentTsQ && price === lastTencentPriceQ) {
+            frozenCheckQ++;
+            if (frozenCheckQ >= 300) tencentFrozenQ = true;
+          } else {
+            frozenCheckQ = 0; lastTencentTsQ = ts; lastTencentPriceQ = price;
+          }
+          if (!tencentFrozenQ) {
+            const q = { price: price, change: +d[1], high: +d[4], low: +d[5], time: ts, prevClose: price - +d[1] };
+            lastSpotQ = q.price;
+            freshQ.spot = Date.now();
+            pushSpotToKlinesQ(q.price);
+            return q;
+          }
+        }
+      } catch (e) { }
+    }
+    try {
+      const resp = await fetch('https://api.gold-api.com/price/XAU?_=' + Date.now());
+      const j = await resp.json();
+      if (j && j.price) {
+        const q = { price: j.price, change: 0, high: j.price, low: j.price, time: '', prevClose: j.price };
+        lastSpotQ = q.price;
+        freshQ.spot = Date.now();
+        pushSpotToKlinesQ(q.price);
+        return q;
+      }
+    } catch (e2) { }
+    // COMEX 期货实时价（伦敦收盘/腾讯冻结时主力源，交易至北京时间 06:00）
+    try {
+      const resp = await fetch('https://push2.eastmoney.com/api/qt/stock/get?secid=101.GC00Y&fields=f43,f44,f45,f46,f60&_=' + Date.now());
+      const j = await resp.json();
+      if (j && j.data && j.data.f43) {
+        const price = j.data.f43 / 100;
+        const prevClose = j.data.f60 ? j.data.f60 / 100 : price;
+        const q = { price: price, change: price - prevClose, high: j.data.f44 ? j.data.f44 / 100 : price, low: j.data.f45 ? j.data.f45 / 100 : price, time: '', prevClose: prevClose };
+        lastSpotQ = q.price;
+        freshQ.spot = Date.now();
+        pushSpotToKlinesQ(q.price);
+        return q;
+      }
+    } catch (e3) { }
+    return null;
+  }
+
+  const KLINE_HOSTS2 = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
+  function fetchKlineViaSinaQ() {
+    return new Promise((resolve) => {
+      const cbName = '_xgpd_cb_' + Date.now();
+      const script = document.createElement('script');
+      script.charset = 'gbk';
+      script.src = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cbName + '=/InnerFuturesNewService.getDailyKLine?symbol=AU0&_=' + Date.now();
+      const timer = setTimeout(() => { script.remove(); resolve(null); }, 10000);
+      script.onload = () => {
+        clearTimeout(timer);
+        try {
+          const arr = window[cbName];
+          if (Array.isArray(arr) && arr.length > 60) {
+            const data = arr.map(x => ({ date: x.d, o: +x.o, c: +x.c, h: +x.h, l: +x.l, v: +x.v }));
+            script.remove(); delete window[cbName];
+            resolve(data);
+            return;
+          }
+        } catch (e) {}
+        script.remove(); delete window[cbName]; resolve(null);
+      };
+      script.onerror = () => { clearTimeout(timer); script.remove(); delete window[cbName]; resolve(null); };
+      document.head.appendChild(script);
+    });
+  }
+  let dailySourceQ = 'XAUUSD'; // 日线基准：XAUUSD(COMEX 美元/盎司) / 沪金(人民币/克)
+  async function fetchKlineQ() {
+    // XAUUSD 优先：COMEX 日K（美元/盎司，与现货同步）→ 沪金兜底（人民币/克）
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const host = KLINE_HOSTS2[attempt % KLINE_HOSTS2.length];
+      const url = host + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=101&fqt=0&lmt=260&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + attempt;
+      try {
+        const json = await (await fetch(url)).json();
+        if (json && json.data && json.data.klines && json.data.klines.length > 30) {
+          dailySourceQ = 'XAUUSD';
+          return json.data.klines.map(line => {
+            const p = line.split(',');
+            return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] };
+          });
+        }
+      } catch (e) {}
+      await new Promise(res => setTimeout(res, 800 * (attempt + 1)));
+    }
+    const sina = await fetchKlineViaSinaQ();
+    if (sina) { dailySourceQ = '沪金'; return sina; }
+    return null;
+  }
+
+  function applyIndicatorsQ(k) {
+    if (!k || !k.length) return;
+    const closes = k.map(x => x.c);
+    const rsi = calcRSI(closes, 14);
+    const atr = calcATR(k, 14);
+    const adxInfo = calcADX(k, 14);
+    const ema9 = calcEMA(closes, 9);
+    const ema21 = calcEMA(closes, 21);
+    const sma200 = calcSMA(closes, 200);
+    const macd = calcMACD(closes);
+    // 存全局日线状态（供预测视图日线周期切换）
+    indicatorStateQ = { rsi, atr, adxInfo, ema9, ema21, sma200, macd, lastClose: closes[closes.length - 1], count: k.length };
+
+    if (rsi != null) {
+      document.getElementById('kpiRsi').textContent = rsi.toFixed(1);
+      const sub = document.getElementById('kpiRsiSub');
+      if (rsi >= 70) sub.textContent = '超买区 · 注意回调风险';
+      else if (rsi >= 50) sub.textContent = '偏强但未超买 · 50 上方多头';
+      else if (rsi >= 30) sub.textContent = '偏弱 · 50 下方空头';
+      else sub.textContent = '超卖区 · 关注反弹机会';
+    }
+    if (atr != null) {
+      const atrPct = (atr / (closes[closes.length - 1] || 1) * 100).toFixed(2);
+      document.getElementById('kpiAtr').textContent = atr.toFixed(1);
+      document.getElementById('kpiAtrSub').textContent = '日波幅约 ' + atrPct + '% · 实时计算';
+    }
+    if (adxInfo) {
+      document.getElementById('kpiAdx').textContent = adxInfo.adx.toFixed(1);
+      const tag = document.getElementById('kpiAdxTag');
+      if (adxInfo.adx >= 25 && adxInfo.pdi > adxInfo.mdi) { tag.textContent = '强上升趋势 +DI 在上'; tag.className = 'tag tag-up'; }
+      else if (adxInfo.adx >= 25 && adxInfo.mdi > adxInfo.pdi) { tag.textContent = '强下降趋势 -DI 在上'; tag.className = 'tag tag-down'; }
+      else if (adxInfo.adx < 20) { tag.textContent = '无趋势 · 震荡市'; tag.className = 'tag tag-gold'; }
+      else { tag.textContent = '趋势形成中'; tag.className = 'tag tag-info'; }
+    }
+    let score = 50;
+    if (rsi != null) score += (rsi - 50) * 0.3;
+    if (adxInfo) score += (adxInfo.pdi - adxInfo.mdi) > 0 ? 5 : -5;
+    if (ema9 != null && ema21 != null) {
+      if (ema9 > ema21 && closes[closes.length - 1] > ema21) score += 6;
+      else if (ema9 < ema21 && closes[closes.length - 1] < ema21) score -= 6;
+    }
+    if (macd) score += macd.dif > 0 ? 2 : -2;
+    if (sma200 != null) score += closes[closes.length - 1] > sma200 ? 4 : -4;
+    score = clampQ(score, 15, 88);
+    const tag = document.getElementById('kpiTag');
+    if (score >= 60) { tag.textContent = '多头偏强'; tag.className = 'tag tag-up'; }
+    else if (score >= 50) { tag.textContent = '震荡偏多'; tag.className = 'tag tag-gold'; }
+    else if (score >= 40) { tag.textContent = '震荡偏空'; tag.className = 'tag tag-gold'; }
+    else { tag.textContent = '空头偏强'; tag.className = 'tag tag-down'; }
+
+    renderKlineQ(k);
+  }
+
+  /* ================================================================
+     1 小时级别指标引擎（桌面版预测视图，每分钟实时更新）
+     主源：东财 COMEX 60 分钟 K 线；兜底：新浪沪金分时聚合当日小时K
+     ================================================================ */
+  let h1StateQ = null, h1SourceQ = '', h1UpdatedQ = '';
+  let m5StateQ = null, curCycleQ = 'h1', sinaMinRawQ = null;
+  let h1KlinesQ = null, m5KlinesQ = null, m5SourceQ = '', lastSpotQ = null;
+  let h1StaleQ = false;       // K线源暂不可用标记（仅现价推进）
+  const freshQ = { spot: 0, kline: 0 }; // 数据源最后成功更新时间
+  const TWELVE_KEYQ = '2b975f67ef384d128a0c71fa38c9d50d'; // Twelve Data API Key（免费版）
+  let macroStateQ = null;
+  let twelveActiveQ = false; // Twelve Data 是否已生效     // 宏观因子 {usdChg, rateChg, usdDir, rateDir}
+  let indicatorStateQ = null; // 日线级别指标（市场总览 KPI）
+  let spdrDataQ = null;       // SPDR 黄金 ETF 持仓（日频缓存 JSON）
+  async function fetchMacroQ() {
+    try {
+      const r1 = await fetch('https://api.twelvedata.com/time_series?symbol=UUP&interval=1day&outputsize=30&apikey=' + TWELVE_KEYQ);
+      const u = await r1.json();
+      const r2 = await fetch('https://api.twelvedata.com/time_series?symbol=TLT&interval=1day&outputsize=30&apikey=' + TWELVE_KEYQ);
+      const t = await r2.json();
+      if (u.values && u.values.length > 5 && t.values && t.values.length > 5) {
+        const uc = u.values.map(v => +v.close), tc = t.values.map(v => +v.close);
+        const usdChg = (uc[0] - uc[5]) / uc[5] * 100;
+        const rateChg = (tc[0] - tc[5]) / tc[5] * 100;
+        macroStateQ = { usdChg: usdChg, rateChg: rateChg, usdDir: usdChg < 0 ? '弱' : '强', rateDir: rateChg > 0 ? '降' : '升' };
+        return macroStateQ;
+      }
+    } catch (e) { }
+    return null;
+  }
+  async function loadTwelveDataQ() {
+    // Twelve Data XAU/USD 1H（5000 根 ≈ 208 天）→ 聚合 4H，作为 4H 指标完整历史主源
+    try {
+      const r = await fetch('https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&outputsize=5000&apikey=' + TWELVE_KEYQ);
+      const j = await r.json();
+      if (j && j.values && j.values.length > 200) {
+        const bars1h = j.values.slice().reverse().map(v => ({ date: v.datetime, o: +v.open, h: +v.high, l: +v.low, c: +v.close, v: 0 }));
+        const h4 = aggBars4hQ(bars1h);
+        if (h4 && h4.length > 100) {
+          h1KlinesQ = h4;
+          h1SourceQ = 'TwelveData 4H(1H聚合)';
+          twelveActiveQ = true;
+          h1StaleQ = false;
+          freshQ.kline = Date.now();
+          if (h1KlinesQ) h1StateQ = calcStateFromKQ(h1KlinesQ);
+          renderPredictionQ();
+          return true;
+        }
+      }
+    } catch (e) { }
+    twelveActiveQ = false;
+    return false;
+  }
+  function aggBars4hQ(bars) {
+    // 按 4 小时时间窗聚合 1H K 线 → 4H K（0-3,4-7,8-11,12-15,16-19,20-23 点窗口）
+    if (!bars || !bars.length) return null;
+    const out = [];
+    let cur = null, curKey = null;
+    for (const b of bars) {
+      const m = String(b.date).match(/(\d{2}):/);
+      const h = m ? parseInt(m[1]) : 0;
+      const key = Math.floor(h / 4);
+      if (key !== curKey) {
+        if (cur) out.push(cur);
+        cur = { date: b.date, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v || 0 };
+        curKey = key;
+      } else {
+        cur.h = Math.max(cur.h, b.h);
+        cur.l = Math.min(cur.l, b.l);
+        cur.c = b.c;
+        cur.v += b.v || 0;
+      }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  function fetchH1ViaEmQ() {
+    const hosts = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
+    const mapK = kl => kl.map(l => { const p = l.split(','); return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] }; });
+    const tryK = (klt) => new Promise(async resolve => {
+      for (let i = 0; i < 4; i++) {
+        const h = hosts[i % 3];
+        try {
+          const r = await fetch(h + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=' + klt + '&fqt=0&lmt=400&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + i);
+          const j = await r.json();
+          if (j && j.data && j.data.klines && j.data.klines.length > 30) return resolve(mapK(j.data.klines));
+        } catch (e) { /* 重试下一域名 */ }
+        await new Promise(res => setTimeout(res, 500 * (i + 1)));
+      }
+      resolve(null);
+    });
+    return new Promise(async resolve => {
+      // 1) 原生 4H（部分环境支持 klt=240）
+      const k240 = await tryK(240);
+      if (k240 && k240.length > 30) return resolve({ bars: k240, agg: false });
+      // 2) 主源：1H（klt=60，稳定）→ 前端按 4 小时窗口聚合
+      const k60 = await tryK(60);
+      if (k60 && k60.length > 30) {
+        const h4 = aggBars4hQ(k60);
+        if (h4 && h4.length > 15) return resolve({ bars: h4, agg: true });
+      }
+      resolve(null);
+    });
+  }
+  function fetchSinaMinRawQ() {
+    return new Promise(resolve => {
+      const cb = 'h1minq' + Date.now();
+      const script = document.createElement('script');
+      script.src = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getMinLine?symbol=AU0&_=' + Date.now();
+      script.onload = () => {
+        script.remove();
+        const raw = window[cb];
+        delete window[cb];
+        resolve(raw && raw.length ? raw : null);
+      };
+      script.onerror = () => { script.remove(); delete window[cb]; resolve(null); };
+      document.head.appendChild(script);
+    });
+  }
+  function buildBarsFromMinQ(raw, minutes) {
+    if (!raw || !raw.length) return null;
+    const buckets = {}, order = [];
+    raw.forEach(row => {
+      if (!row || row.length < 2) return;
+      const parts = String(row[0]).split(':');
+      if (parts.length < 2) return;
+      const mIdx = Math.floor((parseInt(parts[0]) * 60 + parseInt(parts[1])) / minutes);
+      const p = parseFloat(row[1]);
+      if (isNaN(p)) return;
+      if (!buckets[mIdx]) { buckets[mIdx] = { o: p, h: p, l: p, c: p }; order.push(mIdx); }
+      else { const b = buckets[mIdx]; b.h = Math.max(b.h, p); b.l = Math.min(b.l, p); b.c = p; }
+    });
+    order.sort((a, b) => a - b);
+    const kl = order.map(mIdx => { const b = buckets[mIdx]; return { date: 'm' + mIdx, o: b.o, c: b.c, h: b.h, l: b.l, v: 0 }; });
+    return kl.length >= 3 ? kl : null;
+  }
+  function applyCycleBarsQ(raw) {
+    if (!raw || !raw.length) return;
+    sinaMinRawQ = raw;
+    const m5 = buildBarsFromMinQ(raw, 5);
+    if (m5 && m5.length >= 14) {
+      const closes = m5.map(x => x.c);
+      m5StateQ = {
+        rsi: calcRSI(closes, 14),
+        atr: calcATR(m5, 14),
+        adxInfo: m5.length >= 30 ? calcADX(m5, 14) : null,
+        ema9: calcEMA(closes, 9),
+        ema21: calcEMA(closes, 21),
+        macd: calcMACD(closes),
+        lastClose: closes[closes.length - 1],
+        count: m5.length
+      };
+    }
+    const h1 = buildBarsFromMinQ(raw, 240);
+    if (h1 && h1.length >= 3) {
+      const closes = h1.map(x => x.c);
+      h1StateQ = {
+        rsi: calcRSI(closes, 14),
+        atr: calcATR(h1, 14),
+        adxInfo: h1.length >= 30 ? calcADX(h1, 14) : null,
+        ema9: calcEMA(closes, 9),
+        ema21: calcEMA(closes, 21),
+        sma50: calcSMA(closes, 50),
+        macd: calcMACD(closes),
+        lastClose: closes[closes.length - 1],
+        count: h1.length
+      };
+      const now = new Date(); const pad = n => String(n).padStart(2, '0');
+      h1UpdatedQ = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+      if (!h1SourceQ) h1SourceQ = '沪金分时聚合';
+    }
+    renderPredictionQ();
+  }
+  function applyH1IndicatorsQ(k) {
+    if (!k || k.length < 3) return;
+    const closes = k.map(x => x.c);
+    h1StateQ = {
+      rsi: calcRSI(closes, 14),
+      atr: calcATR(k, 14),
+      adxInfo: k.length >= 30 ? calcADX(k, 14) : null,
+      ema9: calcEMA(closes, 9),
+      ema21: calcEMA(closes, 21),
+      sma50: calcSMA(closes, 50),
+      macd: calcMACD(closes),
+      lastClose: closes[closes.length - 1],
+      count: k.length
+    };
+    const now = new Date(); const pad = n => String(n).padStart(2, '0');
+    h1UpdatedQ = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    renderPredictionQ();
+  }
+  function fetchM5ViaEmQ() {
+    // COMEX 国际金 5 分钟 K（24h 交易，美元计价）
+    const hosts = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
+    return new Promise(async resolve => {
+      for (let i = 0; i < 4; i++) {
+        const h = hosts[i % 3];
+        try {
+          const r = await fetch(h + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=5&fqt=0&lmt=160&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + i);
+          const j = await r.json();
+          if (j && j.data && j.data.klines && j.data.klines.length > 30) {
+            return resolve(j.data.klines.map(l => { const p = l.split(','); return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] }; }));
+          }
+        } catch (e) { /* 重试下一域名 */ }
+        await new Promise(res => setTimeout(res, 600 * (i + 1)));
+      }
+      resolve(null);
+    });
+  }
+  function calcBOLLQ(closes, p = 20, mult = 2) {
+    if (closes.length < p) return null;
+    const win = closes.slice(-p);
+    const mid = win.reduce((a, b) => a + b, 0) / p;
+    const sd = Math.sqrt(win.reduce((a, b) => a + (b - mid) * (b - mid), 0) / p);
+    return { mid: mid, up: mid + mult * sd, lo: mid - mult * sd };
+  }
+  function calcLevelsQ(k, n = 60) {
+    if (!k || k.length < 10) return null;
+    const win = k.slice(-n);
+    const hi = Math.max(...win.map(x => x.h));
+    const lo = Math.min(...win.map(x => x.l));
+    const last = win[win.length - 1].c;
+    const range = (hi - lo) || 1;
+    return {
+      resist: hi, support: lo,
+      fib382: hi - range * 0.382, fib50: hi - range * 0.5, fib618: hi - range * 0.618,
+      pos: (last - lo) / range
+    };
+  }
+  function calcPatternQ(k) {
+    if (!k || k.length < 3) return null;
+    const p2 = k[k.length - 3], p1 = k[k.length - 2], p0 = k[k.length - 1];
+    const body = c => Math.abs(c.c - c.o);
+    const range = x => (x.h - x.l) || 1;
+    const dir = p1.c >= p1.o ? 'bull' : 'bear';
+    if (dir === 'bear' && p0.c > p0.o && body(p0) > body(p1) && p0.c >= p1.o && p0.o <= p1.c) return { type: '看涨吞没', dir: 'bull', desc: '阳线完全吞没前阴线，反转看多' };
+    if (dir === 'bull' && p0.c < p0.o && body(p0) > body(p1) && p0.o >= p1.c && p0.c <= p1.o) return { type: '看跌吞没', dir: 'bear', desc: '阴线完全吞没前阳线，反转看空' };
+    const upperShadow = x => x.h - Math.max(x.c, x.o);
+    const lowerShadow = x => Math.min(x.c, x.o) - x.l;
+    if (body(p0) > 0 && lowerShadow(p0) >= 2 * body(p0) && upperShadow(p0) <= body(p0)) {
+      return p1.c >= p1.o ? { type: '上吊线', dir: 'bear', desc: '高位长下影，滞涨警示' } : { type: '锤子线', dir: 'bull', desc: '低位长下影，止跌反弹' };
+    }
+    if (body(p0) <= range(p0) * 0.08 && range(p0) > 0) return { type: '十字星', dir: 'neutral', desc: '多空分歧，变盘警示' };
+    return null;
+  }
+  function isEventWindowQ() {
+    const KEY = ['非农', '失业率', 'CPI', 'PCE', '利率决议', 'FOMC', 'ADP', '初请'];
+    const all = [...(window.ecoPublishedList || []), ...(window.ecoFutureList || [])];
+    const now = Date.now();
+    for (const e of all) {
+      if (!e || !e.date || !KEY.some(k => (e.title || '').includes(k))) continue;
+      const t = new Date(e.date + 'T' + (e.time || '12:00').slice(0, 5) + ':00').getTime();
+      if (isNaN(t)) continue;
+      const diffH = (t - now) / 3600000;
+      if (diffH >= -1 && diffH <= 2) return { active: true, title: (e.title || '').slice(0, 24), hours: diffH };
+    }
+    return { active: false };
+  }
+  function verifySummaryQ() {
+    // 读共享 localStorage 的信号验证统计（与手机版同 key）
+    try {
+      const log = JSON.parse(localStorage.getItem('gold4hSignals') || '[]');
+      const done = log.filter(x => x.status === 'win' || x.status === 'lose');
+      const win = done.filter(x => x.status === 'win').length;
+      return done.length ? ('验证 ' + done.length + ' 次 · 胜率 ' + (win / done.length * 100).toFixed(0) + '%') : '验证积累中';
+    } catch (e) { return '验证积累中'; }
+  }
+  function calcStateFromKQ(k) {
+    if (!k || k.length < 3) return null;
+    const closes = k.map(x => x.c);
+    return {
+      rsi: calcRSI(closes, 14),
+      atr: calcATR(k, 14),
+      adxInfo: k.length >= 30 ? calcADX(k, 14) : null,
+      ema9: calcEMA(closes, 9),
+      ema21: calcEMA(closes, 21),
+      sma50: calcSMA(closes, 50),
+      macd: calcMACD(closes),
+      boll: calcBOLLQ(closes),
+      levels: calcLevelsQ(k),
+      pattern: calcPatternQ(k),
+      lastClose: closes[closes.length - 1],
+      count: k.length
+    };
+  }
+  function pushSpotToKlinesQ(price) {
+    // 用最新国际现货价推进最后一根 K（仅限国际源 COMEX，避免污染沪金价位）
+    if (!price || isNaN(price)) return;
+    const push = arr => {
+      if (!arr || !arr.length) return;
+      const last = arr[arr.length - 1];
+      last.c = price;
+      if (price > last.h) last.h = price;
+      if (price < last.l) last.l = price;
+    };
+    if (h1SourceQ.indexOf('COMEX') === 0) push(h1KlinesQ);
+    if (m5SourceQ === 'COMEX 5min') push(m5KlinesQ);
+  }
+  async function refreshH1Q() {
+    // ===== 国际金优先三重保障（解决夜间沪金停盘指标不更新） =====
+    const r1h = await fetchH1ViaEmQ();
+    if (r1h && r1h.bars && r1h.bars.length > 15) {
+      if (!twelveActiveQ) {
+        h1KlinesQ = r1h.bars;
+        h1SourceQ = r1h.agg ? 'COMEX 4H(1H聚合)' : 'COMEX 4H';
+      }
+      h1StaleQ = false;
+      freshQ.kline = Date.now();
+    } else if (h1KlinesQ) {
+      h1StaleQ = true; // K 线源暂不可用，保持旧 K + 现价推进
+    }
+    let m5 = await fetchM5ViaEmQ();
+    if (m5 && m5.length >= 14) { m5KlinesQ = m5; m5SourceQ = 'COMEX 5min'; }
+    if (!h1KlinesQ || !m5KlinesQ) {
+      const raw = await fetchSinaMinRawQ();
+      if (raw && raw.length) {
+        if (!h1KlinesQ) { const h1 = buildBarsFromMinQ(raw, 240); if (h1 && h1.length >= 3) { h1KlinesQ = h1; h1SourceQ = '沪金分时聚合'; } }
+        if (!m5KlinesQ) { const m5b = buildBarsFromMinQ(raw, 5); if (m5b && m5b.length >= 14) { m5KlinesQ = m5b; m5SourceQ = '沪金分时聚合'; } }
+      }
+    }
+    if (lastSpotQ) pushSpotToKlinesQ(lastSpotQ);
+    if (h1KlinesQ) {
+      h1StateQ = calcStateFromKQ(h1KlinesQ);
+      const now = new Date(); const pad = n => String(n).padStart(2, '0');
+      h1UpdatedQ = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    }
+    if (m5KlinesQ) m5StateQ = calcStateFromKQ(m5KlinesQ);
+    renderPredictionQ();
+  }
+  function getCycleStateQ() {
+    if (curCycleQ === 'm5') return m5StateQ || h1StateQ;
+    if (curCycleQ === 'h1') return h1StateQ;
+    return indicatorStateQ || h1StateQ; // 日线
+  }
+  function getCycleNameQ() {
+    return curCycleQ === 'm5' ? '5分钟' : (curCycleQ === 'h1' ? '4小时' : '日线');
+  }
+  function setCycleQ(c) {
+    curCycleQ = c;
+    const idMap = { m5: 'cycQM5', h1: 'cycQH1', day: 'cycQDay' };
+    Object.keys(idMap).forEach(k => {
+      const el = document.getElementById(idMap[k]);
+      if (el) el.classList.toggle('active', k === c);
+    });
+    renderPredictionQ();
+  }
+  function scoreFromQ(s) {
+    // 统一打分（变体 F：RSI.3/ADX5/EMA6/MACD-DIF2/SMA50-200×4）
+    if (!s) return 50;
+    let sc = 50;
+    if (s.rsi != null) sc += (s.rsi - 50) * 0.3;
+    if (s.adxInfo) sc += s.adxInfo.pdi > s.adxInfo.mdi ? 5 : -5;
+    if (s.ema9 != null && s.ema21 != null) {
+      if (s.ema9 > s.ema21 && s.lastClose > s.ema21) sc += 6;
+      else if (s.ema9 < s.ema21 && s.lastClose < s.ema21) sc -= 6;
+    }
+    if (s.macd) sc += s.macd.dif > 0 ? 2 : -2;
+    const sma = s.sma50 || s.sma200;
+    if (sma != null) sc += s.lastClose > sma ? 4 : -4;
+    return Math.max(15, Math.min(88, sc));
+  }
+  function calcOBVQ(k, p = 20) {
+    if (!k || k.length < p + 1) return null;
+    let obv = 0; const obvs = [];
+    for (let i = 1; i < k.length; i++) {
+      const v = k[i].v || 0;
+      if (k[i].c > k[i - 1].c) obv += v;
+      else if (k[i].c < k[i - 1].c) obv -= v;
+      obvs.push(obv);
+    }
+    const recent = obvs.slice(-p);
+    const avg = recent.reduce((a, b) => a + b, 0) / p;
+    return obv > avg ? 'bull' : 'bear';
+  }
+  function renderPredictionQ() {
+    let s = getCycleStateQ();
+    if (!s) s = h1StateQ;
+    if (!s) return;
+    const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const cycName = getCycleNameQ();
+    // 综合方向（当前周期 + OBV 量能确认 + 多周期共振）
+    let score = scoreFromQ(s);
+    const curKlinesQ = curCycleQ === 'h1' ? h1KlinesQ : (curCycleQ === 'm5' ? m5KlinesQ : null);
+    let obvDirQ = curKlinesQ ? calcOBVQ(curKlinesQ) : null;
+    if (obvDirQ) score += obvDirQ === 'bull' ? 1 : -1;
+    let resoQ = null;
+    if (s && indicatorStateQ) {
+      const curBull = scoreFromQ(s) >= 50;
+      const dayBull = scoreFromQ(indicatorStateQ) >= 50;
+      if (curBull && dayBull) resoQ = 'bull';
+      else if (!curBull && !dayBull) resoQ = 'bear';
+    }
+    if (resoQ === 'bull') score += 4;
+    else if (resoQ === 'bear') score -= 2;
+    // 宏观因子：美元弱/利率降 → 利多黄金（回测组合正确率 70.5%）
+    if (macroStateQ) {
+      if (macroStateQ.usdChg < 0) score += 2; else score -= 2;
+      if (macroStateQ.rateChg > 0) score += 1; else score -= 1;
+    }
+    score = clampQ(score, 15, 88);
+    const bullPct = Math.round(score);
+    setT('pdBull', score.toFixed(1) + '%');
+    setT('pdBear', (100 - score).toFixed(1) + '%');
+    const mB = document.getElementById('pdMeterBull'), mR = document.getElementById('pdMeterBear');
+    if (mB) mB.style.width = bullPct + '%';
+    if (mR) mR.style.width = (100 - bullPct) + '%';
+    setT('pdConf', score.toFixed(1) + '%');
+    // 交易信号门控（技术+宏观融合：阈值+共振+ADX≥25+宏观方向一致 → 多66.7%/空65.5%）
+    const baseScQ = scoreFromQ(s);
+    const adxOkQ = s && s.adxInfo && s.adxInfo.adx >= 25;
+    const macroBullQ = macroStateQ ? (macroStateQ.usdChg < 0 && macroStateQ.rateChg > 0) : null;
+    const macroBearQ = macroStateQ ? (macroStateQ.usdChg >= 0 && macroStateQ.rateChg <= 0) : null;
+    let tSignalQ = '观望';
+    if (macroStateQ) {
+      if (baseScQ >= 55 && resoQ === 'bull' && adxOkQ && macroBullQ) tSignalQ = '做多';
+      else if (baseScQ <= 45 && resoQ === 'bear' && adxOkQ && macroBearQ) tSignalQ = '做空';
+    } else {
+      if (baseScQ >= 55 && resoQ === 'bull' && adxOkQ) tSignalQ = '做多';
+      else if (baseScQ <= 45 && resoQ === 'bear' && adxOkQ) tSignalQ = '做空';
+    }
+    // 大事件窗口过滤：非农/CPI/FOMC 前2h~后1h 信号降级为观望
+    const evtQ = isEventWindowQ();
+    let evtTagQ = '';
+    if (evtQ.active) {
+      evtTagQ = '（' + evtQ.title + ' 事件窗口）';
+      if (tSignalQ !== '观望') tSignalQ = '观望';
+    }
+    // 数据新鲜度保护：关键数据停更 → 强制观望
+    const spotAgeQ = Date.now() - freshQ.spot;
+    const klineAgeQ = Date.now() - freshQ.kline;
+    let dataDeadQ = false;
+    if (freshQ.kline > 0 && klineAgeQ > 20 * 60000 && freshQ.spot > 0 && spotAgeQ > 90 * 1000) {
+      dataDeadQ = true;
+      if (tSignalQ !== '观望') tSignalQ = '观望';
+    }
+    const dir = document.getElementById('pdDir');
+    if (tSignalQ === '做多') { dir.textContent = '做多信号 BUY'; dir.style.color = 'var(--up)'; }
+    else if (tSignalQ === '做空') { dir.textContent = '做空信号 SELL'; dir.style.color = 'var(--down)'; }
+    else if (bullPct >= 60) { dir.textContent = '看多 BUY'; dir.style.color = 'var(--up)'; }
+    else if (bullPct >= 50) { dir.textContent = '中性偏多'; dir.style.color = 'var(--gold)'; }
+    else if (bullPct >= 40) { dir.textContent = '中性偏空'; dir.style.color = 'var(--gold)'; }
+    else { dir.textContent = '看空 SELL'; dir.style.color = 'var(--down)'; }
+    // 5m 强趋势过滤：单边行情中 5 分钟信号钝化，提示可靠性低
+    const m5BlindQ = curCycleQ === 'm5' && s.adxInfo && s.adxInfo.adx >= 25;
+    const resoTag = resoQ ? (resoQ === 'bull' ? ' · 共振看多' : ' · 共振看空') : (indicatorStateQ ? ' · 与日线背离' : '');
+    const sigTag = tSignalQ === '做多' ? ' · 做多信号(融合67%)' : (tSignalQ === '做空' ? ' · 做空信号(融合66%)' : ' · 信号观望');
+    const bollTxt = (s.boll && s.lastClose != null) ? (s.lastClose > s.boll.up ? ' · 布林上轨超买' : (s.lastClose < s.boll.lo ? ' · 布林下轨超卖' : (s.lastClose > s.boll.mid ? ' · 布林中轨上方' : ' · 布林中轨下方'))) : '';
+    const lvTxt = (s.levels && s.lastClose != null) ? (' · 阻力' + fmtQ(s.levels.resist, 1) + '/支撑' + fmtQ(s.levels.support, 1)) : '';
+    const patTxt = (s.pattern && s.pattern.type) ? (' · ' + s.pattern.type) : '';
+    const macroTxt = macroStateQ ? (' · 美元' + (macroStateQ.usdChg < 0 ? '弱' : '强') + '/' + (macroStateQ.rateChg > 0 ? '利率降' : '利率升')) : '';
+    // XAUUSD 交易风险摘要
+    let riskTxt = '';
+    if (tSignalQ !== '观望' && s.atr != null && s.lastClose != null) {
+      const atr = s.atr;
+      const L = s.levels;
+      let stop, target;
+      if (tSignalQ === '做多') {
+        stop = s.lastClose - atr * 1.5;
+        if (L && L.support < s.lastClose) stop = Math.max(stop, L.support - atr * 0.3);
+        target = s.lastClose + atr * 3.0;   // 盈亏比 2:1（回测最优）
+        if (L && L.resist > s.lastClose) target = Math.min(target, L.resist);
+      } else {
+        stop = s.lastClose + atr * 1.5;
+        if (L && L.resist > s.lastClose) stop = Math.min(stop, L.resist + atr * 0.3);
+        target = s.lastClose - atr * 3.0;
+        if (L && L.support < s.lastClose) target = Math.max(target, L.support);
+      }
+      const rr = Math.abs(target - s.lastClose) / (Math.abs(stop - s.lastClose) || 1);
+      const lvl = rr >= 2 ? '低' : (rr >= 1 ? '中' : '高');
+      riskTxt = ' · 止损' + fmtQ(stop, 1) + '/目标' + fmtQ(target, 1) + '/风险' + lvl + '(RR1:' + rr.toFixed(1) + ')';
+    }
+    setT('pdDesc', cycName + ' 级别指标：RSI ' + (s.rsi != null ? s.rsi.toFixed(1) : '--') + ' · ADX ' + (s.adxInfo ? s.adxInfo.adx.toFixed(1) : '--') + ' · ' + (s.macd && s.macd.hist > 0 ? 'MACD 红柱' : 'MACD 绿柱') + ' · ' + h1SourceQ + (m5BlindQ ? ' · [5m强趋势钝化，建议切4H]' : '') + (h1StaleQ ? ' · K线源暂不可用·现价推进' : '') + resoTag + sigTag + bollTxt + lvTxt + patTxt + macroTxt + riskTxt + (evtQ.active ? ' · 事件窗口·观望' : '') + (dataDeadQ ? ' · 数据停更·预测暂停' : ''));
+    // 目标位（当前周期 ATR，止损 1.5× / 目标 3.0×）
+    if (s.atr != null && s.lastClose != null) {
+      setT('pdT1', fmtQ(s.lastClose + s.atr * 3.0, 1));
+      setT('pdT2', fmtQ(s.lastClose - s.atr * 1.5, 1));
+    }
+    // KPI
+    setT('pdPeriod', cycName + ' 级别');
+    setT('pdPeriodSub', cycName === '日线' ? ('日线趋势(' + (dailySourceQ === 'XAUUSD' ? 'XAUUSD' : '沪金') + ') · 5 分钟刷新') : '分钟级聚合 · 每 30 秒更新');
+    setT('pdSource', curCycleQ === 'm5' ? (m5SourceQ || h1SourceQ) : h1SourceQ);
+    setT('pdSourceSub', '更新时间 ' + h1UpdatedQ);
+    const note = document.getElementById('pdCycleNote');
+    if (note) note.textContent = cycName + ' 周期 · ' + (s.count || '--') + ' 根K线 · ' + h1UpdatedQ + ' 更新' + (m5BlindQ ? ' · 注意：强趋势中 5m 信号钝化，可靠性低' : '') + (resoQ ? ' · ' + (resoQ === 'bull' ? '与日线共振看多' : '与日线共振看空') : (indicatorStateQ ? ' · 与日线背离' : '')) + ' · 信号：' + tSignalQ + ' · ' + verifySummaryQ();
+    // 周期徽标
+    const tag = document.getElementById('pdPeriodTag');
+    if (tag) tag.textContent = cycName + ' 级别 · 实时' + (evtQ.active ? ' · 事件窗口·观望' : (tSignalQ === '做多' ? ' · 做多信号' : (tSignalQ === '做空' ? ' · 做空信号' : (m5BlindQ ? ' · 强趋势钝化' : (h1StaleQ ? ' · K线源暂不可用·现价推进' : (resoQ ? ' · ' + (resoQ === 'bull' ? '共振看多' : '共振看空') : ''))))));
+    if (s.rsi != null) {
+      setT('pdRsi', s.rsi.toFixed(1));
+      const rs = document.getElementById('pdRsiSub');
+      if (rs) rs.textContent = s.rsi >= 70 ? '超买区 · 注意回调' : (s.rsi >= 50 ? '50 上方偏强' : '50 下方偏弱');
+      const rv = document.getElementById('pdRsi');
+      if (rv) rv.style.color = s.rsi >= 50 ? 'var(--up)' : 'var(--down)';
+    }
+  }
+
+  function renderKlineQ(k) {
+    const svg = document.getElementById('klineSvg');
+    if (!svg) return;
+    const W = 820, H = 230, pad = 10;
+    const n = Math.min(k.length, 60);
+    const data = k.slice(-n);
+    const all = data.flatMap(x => [x.h, x.l]);
+    const min = Math.min(...all), max = Math.max(...all);
+    const range = (max - min) || 1;
+    const xAt = i => pad + i * (W - pad * 2) / (n - 1);
+    const yAt = v => pad + (max - v) / range * (H - pad * 2);
+    const closes = data.map(x => x.c);
+    const ema9Line = data.map((x, i) => calcEMA(closes.slice(0, i + 1), 9));
+    const sma200Line = data.map((x, i) => {
+      const arr = closes.slice(0, i + 1);
+      return arr.length >= 200 ? calcSMA(arr, 200) : null;
+    });
+    let body = '';
+    for (let g = 1; g <= 4; g++) body += `<line x1="0" y1="${H*g/5}" x2="${W}" y2="${H*g/5}" stroke="#1C2430" stroke-width="1"/>`;
+    const bw = Math.max(3, (W - pad * 2) / n * 0.55);
+    data.forEach((x, i) => {
+      const cx = xAt(i);
+      const color = x.c >= x.o ? '#F2574C' : '#21B28F';
+      const yO = yAt(x.o), yC = yAt(x.c), yH = yAt(x.h), yL = yAt(x.l);
+      body += `<line x1="${cx}" y1="${yH}" x2="${cx}" y2="${yL}" stroke="${color}" stroke-width="1"/>`;
+      const top = Math.min(yO, yC), h = Math.max(1, Math.abs(yO - yC));
+      body += `<rect x="${cx - bw/2}" y="${top}" width="${bw}" height="${h}" rx="0.5" fill="${color}"/>`;
+    });
+    const mkPts = (line, color, dash = '') => {
+      const pts = [];
+      line.forEach((v, i) => { if (v != null) pts.push(`${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`); });
+      if (pts.length > 1) body += `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.6"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+    };
+    mkPts(ema9Line, '#F2D98C');
+    mkPts(sma200Line, '#21B28F', '4 3');
+    svg.innerHTML = body;
+  }
+
+  async function refreshQuoteQ() {
+    const q = await fetchQuoteQ();
+    if (q) {
+      const priceEl = document.getElementById('kpiPrice');
+      const prevPrice = parseFloat(String(priceEl.textContent).replace(/,/g, ''));
+      priceEl.textContent = fmtQ(q.price, 2);
+      if (prevPrice && q.price !== prevPrice) {
+        priceEl.classList.remove('flash-up', 'flash-down');
+        void priceEl.offsetWidth;
+        priceEl.classList.add(q.price > prevPrice ? 'flash-up' : 'flash-down');
+      }
+      priceEl.style.color = q.change >= 0 ? 'var(--up)' : 'var(--down)';
+      const pct = q.change / q.prevClose * 100;
+      const sign = q.change >= 0 ? '+' : '';
+      const chg = document.getElementById('kpiChg');
+      chg.textContent = `${sign}${q.change.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+      chg.style.color = q.change >= 0 ? 'var(--up)' : 'var(--down)';
+      document.querySelector('.live-badge').innerHTML = '<span class="live-dot"></span>实时行情 · 数据时间 ' + q.time;
+    }
+  }
+
+  async function refreshKlineQ() {
+    const k = await fetchKlineQ();
+    if (k && k.length > 30) applyIndicatorsQ(k);
+  }
+  refreshKlineQ();
+  refreshQuoteQ();
+  refreshH1Q();                                 // 1H 指标引擎
+  setInterval(refreshH1Q, 30000);               // 1H K线 60 秒刷新
+  setInterval(refreshQuoteQ, 1000);   // 金价 1 秒刷新（与国际金价变动同步）
+  fetchGCQuoteQ();                    // 纽约期金实时参考
+  setInterval(fetchGCQuoteQ, 5000);   // 5 秒刷新
+  setInterval(refreshKlineQ, 60000); // 日线 K 线 1 分钟刷新
+
+  async function fetchGCQuoteQ() {
+    // 纽约期金实时参考（COMEX 期货，5 秒更新）
+    try {
+      const resp = await fetch('https://qt.gtimg.cn/q=hf_GC&_=' + Date.now());
+      const buf = await resp.arrayBuffer();
+      const txt = new TextDecoder('gbk').decode(buf);
+      const raw = txt.split('"')[1];
+      if (!raw) return;
+      const d = raw.split(',');
+      const price = parseFloat(d[0]), prevClose = parseFloat(d[7]);
+      const chg = price - prevClose;
+      const el = document.getElementById('kpiGC');
+      if (el) {
+        const color = chg >= 0 ? 'var(--up)' : 'var(--down)';
+        el.innerHTML = '纽约期金 ' + fmtQ(price, 1) + ' <span style="color:' + color + ';">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '</span>（COMEX 实时 · 5秒更新）';
+      }
+    } catch (e) { }
+  }
+
+  /* ================================================================
+     经济日历（东财 RPT_ECONOMICVALUE_ALL，JSONP 跨域）
+     ================================================================ */
+  function fmtEco(v) {
+    if (v === null || v === undefined || v === 'None') return '--';
+    return String(v);
+  }
+  function renderEcoCalendar(items) {
+    const container = document.getElementById('ecoFuture');
+    if (!container || !items || !items.length) return;
+    // 只展示前 6 条
+    const html = items.slice(0, 6).map(it => {
+      const d = (it.date || '').slice(5); // MM-DD
+      return `<div class="data-row" style="font-size:10.5px;">
+        <span style="width:90px;font-family:var(--font-mono);color:var(--text-secondary);">${d}</span>
+        <span style="width:60px;font-family:var(--font-mono);color:var(--text-muted);">${it.time || '--'}</span>
+        <span style="flex:1;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</span>
+        <span style="width:70px;text-align:right;font-family:var(--font-mono);color:${it.actual != null ? 'var(--up)' : 'var(--text-secondary)'};">${it.actual != null ? fmtEco(it.actual) : (it.forecast != null ? '预测 ' + fmtEco(it.forecast) : '--')}</span>
+      </div>`;
+    }).join('');
+    container.innerHTML = html;
+  }
+  function renderEcoCards(published) {
+    if (!published || !published.length) return;
+    // 多关键词匹配：跳过实际值缺失的记录，取最新发布（东财部分记录实际值延迟录入）
+    const get = (kws) => {
+      // 所有关键词命中中取最新发布日
+      const list = Array.isArray(kws) ? kws : [kws];
+      let best = null;
+      for (const kw of list) {
+        const hits = published.filter(p => p.title.includes(kw) && p.actual != null);
+        if (hits.length) {
+          const h = hits.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+          if (!best || (h.date || '') > (best.date || '')) best = h;
+        }
+      }
+      return best;
+    };
+    const nfp = get('新增非农就业人数:当月值');
+    const cpi = get(['核心CPI:季调:当月同比', '核心CPI:非季调:当月同比', 'CPI:非季调:同比']);
+    const rate = get('联邦基金利率目标:上限');
+    const pce = get(['PCE物价指数:季调:同比', '核心PCE物价指数:同比']);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    if (nfp) { set('ecoNfp', fmtEco(nfp.actual)); set('ecoNfpFc', '前值 ' + fmtEco(nfp.prev)); }
+    if (cpi) { set('ecoCpi', fmtEco(cpi.actual) + '%'); set('ecoCpiFc', '前值 ' + fmtEco(cpi.prev) + '%'); }
+    if (rate) { set('ecoRate', fmtEco(rate.actual) + '%'); }
+    if (pce) { set('ecoPce', fmtEco(pce.actual) + '%'); set('ecoPceFc', '前值 ' + fmtEco(pce.prev) + '%'); }
+  }
+  async function loadEcoCalendar() {
+    // 1) 读取本地 JSON 兜底
+    try {
+      const r = await fetch('data/eco_calendar.json?_=' + Date.now());
+      const json = await r.json();
+      renderEcoCards(json.published || []);
+      renderEcoCalendar(json.future || []);
+      const up = document.getElementById('ecoUpdated');
+      if (up) up.textContent = '· 缓存 ' + (json.updated || '');
+    } catch (e) {}
+    // 2) JSONP 实时拉取：<=今天 倒序 → 最新已发布（含刚公布的非农/CPI）刷新四卡，未来计划刷日历
+    try {
+      const cb = '_eco_cb_' + Date.now();
+      const script = document.createElement('script');
+      const n = new Date();
+      const today = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+      const flt = encodeURIComponent("(DAT_PUBLISHDATE<='" + today + " 00:00:00')");
+      script.src = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=1&pageSize=100&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=-1&source=WEB&client=WEB&callback=' + cb + '&_=' + Date.now();
+      window[cb] = (json) => {
+        const rows = (json.result && json.result.data) || [];
+        const KEY = ['核心CPI', 'CPI:非季调', 'PCE', '失业率', '非农', 'ADP', '联邦基金'];
+        const mapped = rows.filter(d => String(d.TITLE).includes('美国') && KEY.some(s => String(d.TITLE).includes(s)))
+          .map(d => ({ title: d.TITLE, date: String(d.DAT_PUBLISHDATE).slice(0,10), time: d.STR_PUBLISHTIME || '', actual: d.DEC_INDEXVALUE, forecast: d.DEC_FOREVALUE, prev: d.DEC_LINDEXVALUE }));
+        const published = mapped.filter(x => x.actual != null);
+        const future = mapped.filter(x => x.actual == null);
+        window.ecoPublishedList = published;
+        window.ecoFutureList = future;
+        if (published.length) renderEcoCards(published);
+        if (future.length) renderEcoCalendar(future);
+        const up = document.getElementById('ecoUpdated');
+        if (up) up.textContent = '· JSONP 实时刷新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        script.remove(); delete window[cb];
+      };
+      script.onerror = () => { script.remove(); delete window[cb]; };
+      document.head.appendChild(script);
+    } catch (e) {}
+  }
+  loadEcoCalendar();
+  setInterval(loadEcoCalendar, 600000); // 10 分钟刷新经济日历
+
+  /* ================================================================
+     消息雷达（新浪 7x24 快讯，JSONP 跨域）
+     ================================================================ */
+  const NEWS_CAT = [
+    { cat: '黄金行情', kw: ['现货黄金', '黄金', '金价', '期金', '白银'] },
+    { cat: '地缘局势', kw: ['中东', '伊朗', '以色列', '地缘', '战争', '冲突', '袭击', '避险', '俄乌', '外交', '国务卿'] },
+    { cat: '国际油价', kw: ['原油', 'WTI', '布伦特', '油价', 'OPEC', '能源'] },
+    { cat: '美联储', kw: ['美联储', '鲍威尔', '降息', '加息', '利率', 'FOMC', '联邦基金', '点阵图', '鹰派', '鸽派'] },
+    { cat: '美元/美债', kw: ['美元指数', '美元走强', '美元走弱', '美债', '国债收益率', '实际利率', '美元兑'] },
+    { cat: '经济数据', kw: ['CPI', '通胀', 'PCE', '非农', '失业率', '就业', 'GDP', '贸易帐'] },
+  ];
+  const BULL_KW = ['降息', '避险', '地缘', '冲突', '战争', '袭击', '通胀升温', '美元走弱', '美债收益率下行', '央行购金', '金价上涨', '黄金突破', '增持黄金', '超预期回落', '就业数据疲软', '不及预期', '期金突破', '现货黄金突破'];
+  const BEAR_KW = ['加息', '美元走强', '美债收益率上行', '风险偏好回升', '股市上涨', '黄金遭抛售', '金价下跌', '减持黄金', '就业数据强劲', '超预期', '鹰派', '降息预期降温'];
+  function classifyNews(t) {
+    for (const c of NEWS_CAT) if (c.kw.some(k => t.includes(k))) return c.cat;
+    return '全球市场';
+  }
+  function newsSentiment(t) {
+    const pos = BULL_KW.filter(k => t.includes(k)).length;
+    const neg = BEAR_KW.filter(k => t.includes(k)).length;
+    return pos > neg ? '利多' : (neg > pos ? '利空' : '中性');
+  }
+  function newsColor(sent) {
+    return sent === '利多' ? 'var(--up)' : (sent === '利空' ? 'var(--down)' : 'var(--gold-soft)');
+  }
+  function newsBg(sent) {
+    return sent === '利多' ? 'rgba(242,87,76,0.14)' : (sent === '利空' ? 'rgba(33,178,143,0.14)' : 'rgba(232,181,79,0.14)');
+  }
+  function renderNews(items) {
+    const c = document.getElementById('newsList');
+    if (!c || !items || !items.length) return;
+    c.innerHTML = items.map(n => `
+      <div class="news-item">
+        <div class="news-cat" style="background:${newsBg(n.sent)};color:${newsColor(n.sent)}">${n.cat}</div>
+        <div class="news-body">
+          <div class="news-title">${n.title}</div>
+          <div class="news-meta"><span class="news-time">${n.time} · 新浪7x24</span><span class="news-impact" style="background:${newsBg(n.sent)};color:${newsColor(n.sent)}">${n.sent}黄金</span></div>
+        </div>
+      </div>`).join('');
+    // 综合研判：统计利多/利空
+    const bulls = items.filter(x => x.sent === '利多').length;
+    const bears = items.filter(x => x.sent === '利空').length;
+    const net = bulls - bears;
+    const score = (net * 2.5).toFixed(1);
+    const tag = document.getElementById('judgeTag');
+    const bar = document.getElementById('judgeBar');
+    const scoreEl = document.getElementById('judgeScore');
+    const textEl = document.getElementById('judgeText');
+    if (net >= 2) { tag.textContent = '偏多'; tag.className = 'tag tag-up'; }
+    else if (net >= 1) { tag.textContent = '中性偏多'; tag.className = 'tag tag-gold'; }
+    else if (net <= -2) { tag.textContent = '偏空'; tag.className = 'tag tag-down'; }
+    else { tag.textContent = '中性'; tag.className = 'tag tag-gold'; }
+    scoreEl.textContent = (net >= 0 ? '+' : '') + score;
+    scoreEl.style.color = net >= 0 ? 'var(--up)' : 'var(--down)';
+    bar.style.width = Math.min(100, 50 + net * 8) + '%';
+    bar.style.background = net >= 0 ? 'var(--up)' : 'var(--down)';
+    textEl.textContent = '基于最近 ' + items.length + ' 条黄金相关快讯：利多 ' + bulls + ' 条、利空 ' + bears + ' 条、中性 ' + (items.length - bulls - bears) + ' 条。';
+    const badge = document.getElementById('newsBadge');
+    if (badge) badge.innerHTML = '<span class="live-dot" style="background:var(--up)"></span>消息面' + tag.textContent + ' · 净得分 ' + (net >= 0 ? '+' : '') + score;
+  }
+  function fetchNews() {
+    return new Promise((resolve) => {
+      const cb = '_news_' + Date.now();
+      const script = document.createElement('script');
+      script.src = 'https://zhibo.sina.com.cn/api/zhibo/feed?callback=' + cb + '&page=1&page_size=100&zhibo_id=152&_=' + Date.now();
+      let done = false;
+      const cleanup = () => { script.remove(); delete window[cb]; };
+      const timer = setTimeout(() => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve([]); } }, 10000);
+      // 新浪7x24 为"调用式"JSONP：try{cb({...})} → 必须预定义回调函数
+      window[cb] = (data) => {
+        if (done) return; done = true;
+        clearTimeout(timer);
+        try {
+          const feed = (data && data.result && data.result.data && data.result.data.feed && data.result.data.feed.list) || [];
+          const GOLD = ['黄金', '金价', '美元', '美联储', '降息', '加息', '原油', '油价', '地缘', '中东', '伊朗', '避险', '关税', '通胀', 'CPI', '非农', '美债', 'WTI', '布伦特', '期金', '白银'];
+          const items = feed
+            .map(f => ({ rich: (f.rich_text || '').replace(/<[^>]+>/g, ''), time: (f.create_time || '').slice(5, 16) }))
+            .filter(x => x.rich.length > 12 && GOLD.some(k => x.rich.includes(k)))
+            .map(x => ({ title: x.rich, time: x.time, cat: classifyNews(x.rich), sent: newsSentiment(x.rich) }))
+            .slice(0, 6);
+          cleanup();
+          resolve(items);
+        } catch (e) { cleanup(); resolve([]); }
+      };
+      script.onerror = () => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve([]); } };
+      document.head.appendChild(script);
+    });
+  }
+  async function loadNews() {
+    const items = await fetchNews();
+    if (items.length) renderNews(items);
+  }
+  loadNews();
+  setInterval(loadNews, 60000); // 60 秒刷新消息雷达
+
+  /* ---------- COMEX 黄金持仓/库存（东财 RPT_FUTUOPT_GOLDSIL JSONP） ---------- */
+  let holdingsDataQ = null, holdingsUpdatedQ = '';
+  function fetchHoldingsQ() {
+    return new Promise((resolve) => {
+      const cb = '_holdq_' + Date.now();
+      const script = document.createElement('script');
+      script.src = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_FUTUOPT_GOLDSIL&columns=ALL&pageNumber=1&pageSize=12&sortColumns=REPORT_DATE&sortTypes=-1&filter=(INDICATOR_ID1%3D%22EMI00069026%22)&source=WEB&client=WEB&callback=' + cb + '&_=' + Date.now();
+      let done = false;
+      const cleanup = () => { script.remove(); delete window[cb]; };
+      const timer = setTimeout(() => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve(null); } }, 12000);
+      // 东财 datacenter 为"调用式"JSONP：cb({...}) → 必须预定义回调函数
+      window[cb] = (json) => {
+        if (done) return; done = true;
+        clearTimeout(timer);
+        try {
+          const data = (json && json.result && json.result.data) || [];
+          cleanup();
+          resolve(data);
+        } catch (e) { cleanup(); resolve(null); }
+      };
+      script.onerror = () => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve(null); } };
+      document.head.appendChild(script);
+    });
+  }
+  function renderHoldingsQ(data) {
+    if (!data || !data.length) return;
+    holdingsDataQ = data;
+    const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const withStock = data.filter(x => x.STORAGE_TON != null);
+    const withNet = data.filter(x => x.NETPOSITION_TON != null);
+    let score = 0;
+    if (withStock.length >= 2) {
+      const s0 = withStock[0], s1 = withStock[1];
+      const delta = s0.STORAGE_TON - s1.STORAGE_TON;
+      setT('pdHStock', s0.STORAGE_TON.toFixed(1) + ' 吨');
+      setT('pdHStockSub', (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' 吨' + (delta < 0 ? ' · 库存下降=需求强' : delta > 0 ? ' · 库存上升=供给增' : ' · 持平'));
+      score += delta < 0 ? 1 : (delta > 0 ? -1 : 0);
+    }
+    if (withNet.length >= 2) {
+      const n0 = withNet[0], n1 = withNet[1];
+      const delta = n0.NETPOSITION_TON - n1.NETPOSITION_TON;
+      setT('pdHNet', n0.NETPOSITION_TON.toFixed(0) + ' 吨');
+      setT('pdHNetSub', (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' 吨' + (delta > 0 ? ' · 资金净流入' : delta < 0 ? ' · 资金净流出' : ' · 持平'));
+      score += delta > 0 ? 1 : (delta < 0 ? -1 : 0);
+      if (n0.NETPOSITION_DOLLAR) {
+        setT('pdHNetDollar', '$' + (n0.NETPOSITION_DOLLAR / 1e9).toFixed(1) + 'B');
+        score += n0.NETPOSITION_TON > 0 ? 1 : -1;
+      }
+    }
+    const d0 = (withStock[0] || withNet[0] || {}).REPORT_DATE;
+    const dir = document.getElementById('pdHDir');
+    if (dir) {
+      if (score >= 2) { dir.textContent = '偏多'; dir.style.color = 'var(--up)'; }
+      else if (score <= -2) { dir.textContent = '偏空'; dir.style.color = 'var(--down)'; }
+      else if (score > 0) { dir.textContent = '中性偏多'; dir.style.color = 'var(--gold)'; }
+      else if (score < 0) { dir.textContent = '中性偏空'; dir.style.color = 'var(--gold)'; }
+      else { dir.textContent = '中性'; dir.style.color = 'var(--text-muted)'; }
+    }
+    const sub = document.getElementById('pdHDirSub');
+    if (sub) sub.textContent = '综合计分 ' + (score >= 0 ? '+' : '') + score + ' · 数据日 ' + (d0 ? d0.slice(0, 10) : '--') + ' · 每日更新';
+    const badge = document.getElementById('pdHoldBadge');
+    if (badge) badge.textContent = '持仓维度 · ' + (score >= 0 ? '偏多' : (score < 0 ? '偏空' : '中性')) + ' · 已同步';
+  }
+  async function loadHoldingsQ() {
+    const d = await fetchHoldingsQ();
+    if (d) renderHoldingsQ(d);
+    // SPDR ETF 持仓（日频缓存 JSON）
+    try {
+      const r = await fetch('data/spdr_holdings.json?_=' + Date.now());
+      const j = await r.json();
+      if (j && j.holdings) {
+        spdrDataQ = j;
+        const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setT('pdHSpdr', j.holdings.toFixed(1) + ' 吨');
+        setT('pdHSpdrSub', (j.change >= 0 ? '+' : '') + j.change.toFixed(1) + ' 吨' + (j.change > 0 ? ' · ETF资金流入' : j.change < 0 ? ' · ETF资金流出' : ' · 持平') + ' · 数据日 ' + (j.asOf || '').slice(5));
+        const spdrDir = document.getElementById('pdHSpdrDir');
+        if (spdrDir) {
+          if (j.change > 0) { spdrDir.textContent = '利多'; spdrDir.style.color = 'var(--up)'; }
+          else if (j.change < 0) { spdrDir.textContent = '利空'; spdrDir.style.color = 'var(--down)'; }
+          else { spdrDir.textContent = '中性'; spdrDir.style.color = 'var(--text-muted)'; }
+        }
+      }
+    } catch (e) { /* 缓存缺失时忽略 */ }
+  }
+  loadHoldingsQ();
+  setInterval(loadHoldingsQ, 600000); // 10 分钟刷新持仓数据
+  loadTwelveDataQ();                   // Twelve Data 4H 完整历史（208 天，主源）
+  setInterval(loadTwelveDataQ, 600000); // 10 分钟刷新（免费版速率限制）
+  fetchMacroQ();                        // 宏观因子（美元/美债利率）
+  setInterval(fetchMacroQ, 600000);     // 10 分钟刷新
+</script>
+</body>
+</html>
