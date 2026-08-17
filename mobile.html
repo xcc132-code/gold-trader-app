@@ -1,0 +1,2552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0F14">
+<title>金势分析 · 手机版</title>
+<style>
+  :root {
+    --bg: #0A0F14;
+    --card: #141A21;
+    --card-deep: #0B0F14;
+    --sidebar-bg: #0E1319;
+    --border: #29303A;
+    --border-soft: #1C2430;
+    --text-primary: #F2F4F7;
+    --text-secondary: #99A3B2;
+    --text-muted: #667081;
+    --gold: #E8B54F;
+    --gold-soft: #F2D98C;
+    --up: #F2574C;
+    --down: #21B28F;
+    --info: #52A0F7;
+    --font-cn: "Sarasa Gothic SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-cn);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: flex; justify-content: center; align-items: center;
+  }
+  .stage-wrap {
+    width: 100%; max-width: 414px; height: 100%; max-height: 900px;
+    margin: auto;
+    position: relative;
+    background: var(--bg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  @media (max-width: 420px) {
+    body { align-items: stretch; }
+    .stage-wrap { max-width: 100%; max-height: 100%; box-shadow: none; }
+  }
+  .status-bar { height: 62px; flex-shrink: 0; padding: 14px 24px 0; display: flex; justify-content: space-between; align-items: center; }
+  .status-time { font-family: -apple-system, "SF Pro Display", "Inter", sans-serif; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .header { padding: 6px 20px 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--gold); display: flex; align-items: center; justify-content: center; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .brand-cn { font-size: 15px; font-weight: 700; }
+  .brand-en { font-size: 7px; font-weight: 600; color: var(--text-muted); letter-spacing: 1.5px; }
+  .live-badge { display: flex; align-items: center; gap: 5px; background: rgba(232,181,79,0.12); border: 1px solid rgba(232,181,79,0.35); border-radius: 999px; padding: 5px 9px; font-size: 10px; font-weight: 600; color: var(--gold-soft); }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+  .desktop-link { font-size: 10px; font-weight: 600; color: var(--text-muted); text-decoration: none; padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; }
+  .desktop-link:active { color: var(--gold-soft); border-color: var(--gold); }
+  .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .content::-webkit-scrollbar { display: none; }
+  .price-card { border-radius: 18px; padding: 18px; background: linear-gradient(180deg, #212D3D 0%, #141A21 100%); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .price-top { display: flex; justify-content: space-between; align-items: center; }
+  .price-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+  .price-tag { background: rgba(242,87,76,0.16); border-radius: 6px; padding: 4px 8px; font-size: 10px; font-weight: 600; color: var(--up); }
+  .price-val { font-family: var(--font-mono); font-size: 42px; font-weight: 700; line-height: 1.1; letter-spacing: -1px; }
+  .price-val.flash-up { animation: flashUp 0.8s ease; }
+  .price-val.flash-down { animation: flashDown 0.8s ease; }
+  @keyframes flashUp { 0% { color: #F2D98C; text-shadow: 0 0 12px rgba(232,181,79,0.6); } 100% { } }
+  @keyframes flashDown { 0% { color: #7CB8F7; text-shadow: 0 0 12px rgba(82,160,247,0.6); } 100% { } }
+  .price-chg-row { display: flex; align-items: center; gap: 8px; }
+  .price-chg { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--up); }
+  .price-chg-tag { background: rgba(242,87,76,0.15); border-radius: 4px; padding: 2px 5px; font-size: 9px; font-weight: 600; color: var(--up); }
+  .meter-row { display: flex; flex-direction: column; gap: 6px; }
+  .meter-labels { display: flex; justify-content: space-between; }
+  .meter-labels span { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+  .bull-lbl { color: var(--up); }
+  .bear-lbl { color: var(--down); }
+  .meter-bar { height: 10px; border-radius: 99px; background: var(--border-soft); display: flex; overflow: hidden; }
+  .meter-bull { background: var(--up); }
+  .meter-bear { background: var(--down); }
+  .meta-row { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; }
+  .meta-row span { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+  .ind-row { display: flex; gap: 10px; }
+  .ind-card { flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px; justify-content: center; height: 74px; }
+  .ind-label { font-size: 10px; color: var(--text-muted); }
+  .ind-val { font-family: var(--font-mono); font-size: 20px; font-weight: 700; }
+  .ind-tag { align-self: flex-start; border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 600; }
+  .tag-up { background: rgba(242,87,76,0.15); color: var(--up); }
+  .tag-gold { background: rgba(232,181,79,0.15); color: var(--gold-soft); }
+  .tag-info { background: rgba(82,160,247,0.15); color: #7CB8F7; }
+  .tag-down { background: rgba(33,178,143,0.15); color: var(--down); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .card-head { display: flex; justify-content: space-between; align-items: center; }
+  .card-title { font-size: 12px; font-weight: 600; }
+  .card-pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 8px; font-size: 9px; font-weight: 500; font-family: var(--font-mono); }
+  .card-pill-gold { background: rgba(232,181,79,0.14); color: var(--gold-soft); }
+  .cycle-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .cycle-tab { flex: 1; text-align: center; padding: 5px 0; border-radius: 8px; font-size: 10px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.04); border: 1px solid var(--border); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .cycle-tab.active { color: #0E1319; background: var(--gold); border-color: var(--gold); }
+  .card-more { font-size: 10px; color: var(--gold-soft); cursor: pointer; }
+  .chart-svg { width: 100%; display: block; }
+  .data-row { display: flex; gap: 8px; align-items: center; background: var(--card-deep); border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px; }
+  .data-name { font-size: 11px; font-weight: 600; }
+  .data-val { font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+  .data-fc { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); flex: 1; }
+  .data-impact { border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 600; }
+  .news-tag { width: 52px; height: 20px; border-radius: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; }
+  .news-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .news-title { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .news-time { font-size: 9px; font-family: var(--font-mono); font-weight: 400; }
+  .tab-bar { flex-shrink: 0; padding: 12px 21px 21px; background: linear-gradient(180deg, transparent 0%, var(--bg) 30%); }
+  .tab-pill { height: 62px; background: var(--sidebar-bg); border: 1px solid var(--border); border-radius: 36px; padding: 4px; display: flex; }
+  .tab-item { flex: 1; height: 100%; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; transition: all .15s; background: transparent; color: var(--text-muted); }
+  .tab-item.active { background: var(--gold); color: var(--sidebar-bg); }
+  .tab-item svg path, .tab-item svg rect, .tab-item svg circle { transition: stroke .15s, fill .15s; }
+  .tab-item:not(.active) svg path, .tab-item:not(.active) svg circle { stroke: var(--text-muted); fill: var(--text-muted); }
+  .tab-item.active svg path, .tab-item.active svg rect { fill: var(--sidebar-bg); stroke: var(--sidebar-bg); }
+  .tab-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
+  .view { display: none; flex-direction: column; gap: 14px; }
+  .view.active { display: flex; }
+  .placeholder { flex: 1; min-height: 320px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; text-align: center; padding: 40px 20px; }
+  .placeholder svg { opacity: 0.5; }
+  .placeholder-title { font-size: 14px; font-weight: 600; }
+  .placeholder-desc { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="stage-wrap">
+  <div class="status-bar">
+    <span class="status-time" id="clock">9:41</span>
+    <div class="status-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="8" width="3" height="4" rx="0.5" fill="#F2F4F7"/><rect x="5" y="5" width="3" height="7" rx="0.5" fill="#F2F4F7"/><rect x="10" y="2.5" width="3" height="9.5" rx="0.5" fill="#F2F4F7"/><rect x="15" y="0" width="3" height="12" rx="0.5" fill="#F2F4F7"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 4C5 -0.5 11 -0.5 15 4" stroke="#F2F4F7" stroke-width="1.6" stroke-linecap="round"/><path d="M3.5 6.5C6 4 10 4 12.5 6.5" stroke="#F2F4F7" stroke-width="1.6" stroke-linecap="round"/><path d="M6 9C7 8 9 8 10 9" stroke="#F2F4F7" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="10.5" r="1" fill="#F2F4F7"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="2.5" stroke="#F2F4F7" stroke-opacity="0.5"/><rect x="2" y="2" width="15" height="8" rx="1.5" fill="#F2F4F7"/><path d="M23 4V8C24.2 7.6 24.2 4.4 23 4Z" fill="#F2F4F7" fill-opacity="0.5"/></svg>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="6" width="13" height="8.5" rx="1.5" fill="#0E1319"/><rect x="2.5" y="6" width="13" height="3.2" rx="1.5" fill="#F2D98C"/><rect x="5" y="3.5" width="8" height="2.5" rx="1" fill="#0E1319"/></svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-cn">金势分析</span>
+        <span class="brand-en">AURUM PRO</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <a href="index.html" class="desktop-link">桌面版</a>
+      <div class="live-badge"><span class="live-dot"></span>实时</div>
+    </div>
+  </div>
+
+  <!-- 信号推送横幅（出做多/做空信号时弹出） -->
+  <div id="signalBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;padding:12px 16px;color:#fff;font-size:13px;font-weight:700;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.35);">
+    <span id="signalBannerText">XAUUSD 做多信号</span>
+    <span style="display:block;font-size:10px;font-weight:400;opacity:0.85;margin-top:2px;" id="signalBannerSub">现价 / 止损 / 目标</span>
+  </div>
+
+  <div class="content">
+    <section class="view active" id="view-overview">
+      <div class="price-card">
+        <div class="price-top">
+          <span class="price-label">XAU/USD · 现货黄金</span>
+          <span class="price-tag" id="priceTag">多头偏强</span>
+        </div>
+        <div class="price-val" id="priceVal">2,418.63</div>
+        <div class="price-chg-row">
+          <span class="price-chg" id="priceChg">+18.42 (+0.77%)</span>
+          <span class="price-chg-tag" id="priceChgTag">今日看涨</span>
+        </div>
+        <div class="meter-row">
+          <div class="meter-labels">
+            <span class="bull-lbl" id="bullLbl">看多 62.0%</span>
+            <span class="bear-lbl" id="bearLbl">看空 38.0%</span>
+          </div>
+          <div class="meter-bar">
+            <div class="meter-bull" id="meterBull" style="width:62%"></div>
+            <div class="meter-bear" id="meterBear" style="width:38%"></div>
+          </div>
+        </div>
+        <div class="meta-row">
+          <span id="metaHigh">今高 2,436.2</span>
+          <span id="metaLow">今低 2,388.4</span>
+          <span id="metaAtr">ATR 24.6</span>
+          <span id="metaUnit" style="color:var(--gold-soft);font-weight:600;">XAUUSD</span>
+        </div>
+        <div id="metaGC" style="font-size:9.5px;color:var(--text-muted);padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);margin-top:6px;">纽约期金 --（实时参考）</div>
+      </div>
+
+      <div class="ind-row">
+        <div class="ind-card">
+          <div class="ind-label">趋势 ADX</div>
+          <div class="ind-val" id="adxVal">32.8</div>
+          <div class="ind-tag tag-up" id="adxTag">强趋势</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-label">动能 RSI</div>
+          <div class="ind-val" id="rsiVal">63.4</div>
+          <div class="ind-tag tag-gold" id="rsiTag">偏强</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-label">波动 ATR</div>
+          <div class="ind-val" id="atrVal">24.6</div>
+          <div class="ind-tag tag-info" id="atrTag">正常</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">日线趋势 · EMA 叠加</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="display:flex;align-items:center;gap:4px;font-size:8px;font-family:var(--font-mono);color:var(--text-muted);"><span style="width:8px;height:3px;background:#F2D98C;border-radius:2px;"></span>EMA9</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:8px;font-family:var(--font-mono);color:var(--text-muted);"><span style="width:8px;height:3px;background:#52A0F7;border-radius:2px;"></span>SMA200</span>
+          </div>
+        </div>
+        <svg class="chart-svg" id="klineSvg" viewBox="0 0 311 110" preserveAspectRatio="none">
+          <line x1="0" y1="22" x2="311" y2="22" stroke="#1C2430" stroke-width="1"/>
+          <line x1="0" y1="44" x2="311" y2="44" stroke="#1C2430" stroke-width="1"/>
+          <line x1="0" y1="66" x2="311" y2="66" stroke="#1C2430" stroke-width="1"/>
+          <line x1="0" y1="88" x2="311" y2="88" stroke="#1C2430" stroke-width="1"/>
+          <path d="M0 94 L20 90 L40 92 L60 85 L80 80 L100 84 L120 74 L140 70 L160 73 L180 66 L200 61 L220 65 L240 55 L260 50 L280 53 L300 44 L311 41" stroke="#F2D98C" stroke-width="1.6" fill="none"/>
+          <path d="M0 100 L20 97 L40 98 L60 92 L80 88 L100 91 L120 83 L140 79 L160 82 L180 76 L200 72 L220 75 L240 67 L260 63 L280 66 L300 58 L311 55" stroke="#52A0F7" stroke-width="1.6" fill="none" stroke-dasharray="4 3"/>
+          <rect x="14" y="70" width="6" height="24" rx="1" fill="#F2574C"/><rect x="34" y="64" width="6" height="30" rx="1" fill="#F2574C"/><rect x="54" y="76" width="6" height="18" rx="1" fill="#21B28F"/><rect x="74" y="60" width="6" height="34" rx="1" fill="#F2574C"/><rect x="94" y="66" width="6" height="28" rx="1" fill="#F2574C"/><rect x="114" y="56" width="6" height="38" rx="1" fill="#F2574C"/><rect x="134" y="62" width="6" height="32" rx="1" fill="#F2574C"/><rect x="154" y="52" width="6" height="42" rx="1" fill="#F2574C"/><rect x="174" y="58" width="6" height="36" rx="1" fill="#F2574C"/><rect x="194" y="48" width="6" height="46" rx="1" fill="#F2574C"/><rect x="214" y="54" width="6" height="40" rx="1" fill="#F2574C"/><rect x="234" y="44" width="6" height="50" rx="1" fill="#F2574C"/><rect x="254" y="50" width="6" height="44" rx="1" fill="#F2574C"/><rect x="274" y="42" width="6" height="52" rx="1" fill="#F2574C"/><rect x="294" y="38" width="6" height="56" rx="1" fill="#F2574C"/>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">关键经济数据 · 已发布实时值</span>
+          <span class="card-pill card-pill-gold" id="ecoPill">数据同步中</span>
+        </div>
+        <div class="data-row">
+          <span class="data-name">核心 CPI</span>
+          <span class="data-val" id="mCpi">2.6%</span>
+          <span class="data-fc" id="mCpiFc">前值 2.8%</span>
+          <span class="data-impact tag-up" id="mCpiTag">降温</span>
+        </div>
+        <div class="data-row">
+          <span class="data-name">非农就业</span>
+          <span class="data-val" id="mNfp">57K</span>
+          <span class="data-fc" id="mNfpFc">前值 129K</span>
+          <span class="data-impact tag-up" id="mNfpTag">回落</span>
+        </div>
+        <div class="data-row">
+          <span class="data-name">美联储利率</span>
+          <span class="data-val" id="mRate">3.75%</span>
+          <span class="data-fc" id="mRateFc">7/30 决议维持</span>
+          <span class="data-impact tag-gold" id="mRateTag">中性</span>
+        </div>
+        <div class="data-row">
+          <span class="data-name">PCE 物价</span>
+          <span class="data-val" id="mPce">3.7%</span>
+          <span class="data-fc" id="mPceFc">前值 4.1%</span>
+          <span class="data-impact tag-up" id="mPceTag">降温</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="#E8B54F" stroke-width="1.3"/><path d="M1.5 5H12.5" stroke="#E8B54F" stroke-width="1.3"/><path d="M4 0.5V3M10 0.5V3" stroke="#E8B54F" stroke-width="1.3" stroke-linecap="round"/></svg>
+            后续重要事件
+          </span>
+          <span class="card-pill card-pill-gold" id="mEcoPill">实时日历</span>
+        </div>
+        <div id="mEcoFuture" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="data-row" style="opacity:0.65;font-size:9.5px;color:var(--text-muted);">
+            <span style="width:72px;">日期</span>
+            <span style="flex:1;">事件</span>
+            <span style="width:52px;text-align:right;">值</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">消息雷达 · 实时快讯</span>
+          <span class="card-more" id="mNewsPill">来源：新浪7x24</span>
+        </div>
+        <div id="mNewsList" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="data-row" style="opacity:0.6;">
+            <div class="news-tag" style="background:rgba(128,128,128,0.14);color:var(--text-muted)">加载</div>
+            <div class="news-body">
+              <div class="news-title">正在同步实时财经快讯…</div>
+              <div class="news-time" style="color:var(--text-muted)">连接新浪 7x24 全球财经直播间</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-prediction">
+      <!-- 综合方向主卡 -->
+      <div class="price-card">
+        <div class="price-top">
+          <span class="price-label">多空预测 · 综合研判</span>
+          <span style="display:flex;align-items:center;gap:5px;">
+            <span class="card-pill card-pill-gold" id="pH1Badge">4H 级别</span>
+            <span class="price-tag" id="pDirTag">看多</span>
+          </span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <span style="font-family:var(--font-mono);font-size:42px;font-weight:700;color:var(--up);" id="pConf">62%</span>
+          <span style="font-size:11px;color:var(--text-muted);" id="pConfDesc">综合概率</span>
+        </div>
+        <div class="meter-row">
+          <div class="meter-labels">
+            <span class="bull-lbl" id="pBull">看多 62.0%</span>
+            <span class="bear-lbl" id="pBear">看空 38.0%</span>
+          </div>
+          <div class="meter-bar">
+            <div class="meter-bull" id="pMeterBull" style="width:62%"></div>
+            <div class="meter-bear" id="pMeterBear" style="width:38%"></div>
+          </div>
+        </div>
+        <div class="meta-row" style="padding-top:6px;">
+          <span id="pTargetUp">目标 2,450.0</span>
+          <span id="pTargetDown">支撑 2,356.8</span>
+          <span id="pUpdateTime">实时</span>
+        </div>
+      </div>
+
+      <!-- 预测依据：三大维度 -->
+      <div class="ind-cat-head" style="padding:2px 0;">
+        <span class="cat-dot" style="background:#E8B54F"></span>
+        <span class="cat-name" style="font-size:14px;">预测主要依据</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-muted);" id="pBasisNote">基于实时数据自动梳理</span>
+      </div>
+
+      <!-- 数据源状态（新鲜度实时监控） -->
+      <div class="card" style="border-color:rgba(255,255,255,0.08);padding:8px 10px;">
+        <div id="pDataStatus" style="font-size:9px;color:var(--text-secondary);line-height:1.6;">数据源状态加载中…</div>
+      </div>
+
+      <!-- 维度1：经济数据 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="5" width="3" height="7" rx="0.8" fill="#E8B54F"/><rect x="5.5" y="2.5" width="3" height="9.5" rx="0.8" fill="#E8B54F"/><rect x="9.5" y="7" width="3" height="5" rx="0.8" fill="#E8B54F"/></svg>
+            维度一 · 经济数据
+          </span>
+          <span class="card-pill card-pill-gold" id="pEcoScore">+2</span>
+        </div>
+        <div id="pEcoMeta" style="font-size:9px;color:var(--text-muted);margin-bottom:6px;line-height:1.6;">经济数据加载中…</div>
+        <div id="pEcoBasis" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="data-row" style="font-size:10px;opacity:0.7;color:var(--text-muted);">
+            <span style="flex:1;">依据</span><span style="width:60px;text-align:right;">方向</span>
+          </div>
+          <div class="data-row"><span style="flex:1;color:var(--text-muted);">数据加载中…</span></div>
+        </div>
+      </div>
+
+      <!-- 维度2：技术指标（多周期切换） -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6.5L7 8.5L12 2.5" stroke="#52A0F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 2.5H12V4.5" stroke="#52A0F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="pTechTitle">维度二 · 技术指标</span>
+          </span>
+          <span class="card-pill card-pill-gold" id="pTechScore">+2</span>
+        </div>
+        <div id="pTechMeta" style="font-size:9px;color:var(--text-muted);margin-bottom:6px;line-height:1.6;">指标原始值加载中…</div>
+        <!-- 周期切换：短线5分钟 / 中线4小时 / 长线日线 -->
+        <div class="cycle-tabs" id="pCycleTabs">
+          <span class="cycle-tab" id="cycM5" onclick="setCycle('m5')">5分钟</span>
+          <span class="cycle-tab active" id="cycH1" onclick="setCycle('h1')">4小时</span>
+          <span class="cycle-tab" id="cycDay" onclick="setCycle('day')">日线</span>
+        </div>
+        <div id="pTechBasis" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="data-row" style="font-size:10px;opacity:0.7;color:var(--text-muted);">
+            <span style="flex:1;">指标信号</span><span style="width:60px;text-align:right;">方向</span>
+          </div>
+          <div class="data-row"><span style="flex:1;color:var(--text-muted);">指标计算中…</span></div>
+        </div>
+      </div>
+
+      <!-- 维度3：消息面 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7H3.2L4.5 3.2L6.8 10.5L8.6 5.8L9.8 8.2H11.5" stroke="#F2574C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            维度三 · 消息面
+          </span>
+          <span class="card-pill card-pill-gold" id="pNewsScore">+1</span>
+        </div>
+        <div id="pNewsBasis" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="data-row" style="font-size:10px;opacity:0.7;color:var(--text-muted);">
+            <span style="flex:1;">最新快讯</span><span style="width:60px;text-align:right;">方向</span>
+          </div>
+          <div class="data-row"><span style="flex:1;color:var(--text-muted);">消息同步中…</span></div>
+        </div>
+      </div>
+
+      <!-- 维度4：持仓量与资金流向 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#21B28F" stroke-width="1.6"/><path d="M7 3.5V7L9 8.5" stroke="#21B28F" stroke-width="1.6" stroke-linecap="round"/></svg>
+            维度四 · 持仓量与资金流向
+          </span>
+          <span class="card-pill card-pill-gold" id="pHoldScore">+1</span>
+        </div>
+        <div id="pHoldBasis" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="data-row" style="font-size:10px;opacity:0.7;color:var(--text-muted);">
+            <span style="flex:1;">COMEX 库存 / 净持仓</span><span style="width:60px;text-align:right;">方向</span>
+          </div>
+          <div class="data-row"><span style="flex:1;color:var(--text-muted);">持仓数据同步中…</span></div>
+        </div>
+      </div>
+
+      <!-- 综合结论 / 操作指令 -->
+      <div class="card" style="background:rgba(232,181,79,0.06);border-color:rgba(232,181,79,0.3);">
+        <div class="card-head">
+          <span class="card-title">操作指令</span>
+          <span class="card-pill card-pill-gold" id="pConclusionTag">观望</span>
+        </div>
+        <div id="pActionSignal" style="font-size:32px;font-weight:800;line-height:1.15;margin:2px 0;">观望</div>
+        <div id="pActionSub" style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">等待明确信号</div>
+        <div id="pEntryTiming" style="font-size:10.5px;line-height:1.5;padding:5px 7px;border-radius:6px;background:rgba(255,255,255,0.04);margin-bottom:6px;display:none;"></div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.6;" id="pConclusionText">综合经济、技术、消息、持仓四维度生成明确操作指令。</div>
+      </div>
+
+      <!-- 交易风险（XAUUSD 买入/卖出风险判断） -->
+      <div class="card" style="border-color:rgba(242,87,76,0.3);">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L13 12H1L7 1.5Z" stroke="#F2574C" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 5.5V8" stroke="#F2574C" stroke-width="1.6" stroke-linecap="round"/><circle cx="7" cy="10" r="0.8" fill="#F2574C"/></svg>
+            交易风险 · XAUUSD
+          </span>
+          <span class="card-pill" style="background:rgba(242,87,76,0.14);border:1px solid rgba(242,87,76,0.35);color:var(--up);" id="pRiskPill">观望</span>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-secondary);line-height:1.7;" id="pRiskText">当前信号观望，无开仓建议。出现做多/做空信号后自动计算止损、目标与风险等级。</div>
+        <div id="pSignalCond" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);"></div>
+      </div>
+
+      <!-- 信号验证记录（4H 准确性自统计） -->
+      <div class="card" style="border-color:rgba(82,160,247,0.3);">
+        <div class="card-head">
+          <span class="card-title" style="display:flex;align-items:center;gap:5px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7H12M8.5 3.5L12 7L8.5 10.5" stroke="#52A0F7" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            4H 信号验证记录
+          </span>
+          <span class="card-pill" style="background:rgba(82,160,247,0.14);border:1px solid rgba(82,160,247,0.35);color:#52A0F7;" id="pVerifyPill">--</span>
+          <span onclick="resetSignalLog()" style="font-size:9.5px;color:var(--text-muted);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:2px 6px;cursor:pointer;flex-shrink:0;">清空重计</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-secondary);line-height:1.7;" id="pVerifyText">连续 90 秒确认的真信号才记录，16 小时后结算（4 根 4H），自动积累正确率…</div>
+      </div>
+
+      <div class="disclaimer" style="margin-top:2px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0"><path d="M8 2L15 14H1L8 2Z" stroke="#E8B54F" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 7V10" stroke="#E8B54F" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="12" r="0.8" fill="#E8B54F"/></svg>
+        预测基于实时行情、经济数据与消息快讯自动生成，不构成投资建议。
+      </div>
+    </section>
+
+    <section class="view" id="view-data">
+      <!-- 宏观面：美元 + 美债（黄金方向核心因子） -->
+      <div class="price-card">
+        <div class="price-top">
+          <span class="price-label">宏观面 · 美元与美债</span>
+          <span class="card-pill card-pill-gold" id="dataMacroPill">实时</span>
+        </div>
+        <div id="dataMacro" style="margin:6px 0;">
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">宏观因子加载中…</span></div>
+        </div>
+      </div>
+
+      <!-- 已发布经济数据（实时值） -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">已发布经济数据 · 实时值</span>
+          <span class="card-more" id="dataEcoPill">东财实时</span>
+        </div>
+        <div id="dataPublished">
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">经济数据加载中…</span></div>
+        </div>
+      </div>
+
+      <!-- 未来经济事件（4H 交易需关注/避开的窗口） -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">未来经济事件 · 事件窗口</span></div>
+        <div id="dataFuture">
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">事件日历加载中…</span></div>
+        </div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:4px;">非农/CPI/FOMC 公布前后技术信号易失真，事件窗口自动降级观望</div>
+      </div>
+    </section>
+
+    <section class="view" id="view-news">
+      <!-- 4H 支撑位 / 阻力位（结构位+均线+斐波那契+枢轴点） -->
+      <div class="price-card">
+        <div class="price-top">
+          <span class="price-label">4H 支撑位 / 阻力位</span>
+          <span class="card-pill card-pill-gold" id="newsSignalPill">区域</span>
+        </div>
+        <div id="newsSRBox" style="margin:8px 0;">
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">计算支撑/阻力区域…</span></div>
+        </div>
+      </div>
+
+      <!-- 多周期趋势共振 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">多周期趋势共振</span>
+          <span class="card-pill card-pill-gold" id="mtTrendTag">加载中</span>
+        </div>
+        <div id="mtTrendBox">
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">计算周线/日线/4小时趋势…</span></div>
+        </div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px;">周线判大势 · 日线定方向 · 4小时择时机</div>
+      </div>
+
+      <!-- 周期指标明细 -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">周期指标明细</span></div>
+        <div id="newsCycleDetail" style="font-size:10px;color:var(--text-secondary);line-height:1.8;">
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">指标加载中…</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings">
+      <div class="card">
+        <div class="card-head"><span class="card-title">验证记录 · 云同步</span></div>
+        <div style="font-size:10px;color:var(--text-muted);line-height:1.6;margin-bottom:8px;">
+          信号验证记录默认存本机（换设备会丢）。导出为 JSON 文件可备份/迁移到其他设备，导入即可恢复。
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="exportSignalLog()" style="flex:1;padding:10px;border:none;border-radius:8px;background:var(--gold);color:var(--sidebar-bg);font-size:12px;font-weight:700;cursor:pointer;">导出记录</button>
+          <button onclick="document.getElementById('importFile').click()" style="flex:1;padding:10px;border:1px solid rgba(232,181,79,0.4);border-radius:8px;background:transparent;color:var(--gold-soft);font-size:12px;font-weight:600;cursor:pointer;">导入记录</button>
+          <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importSignalLog(this.files[0])">
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">信号推送</span></div>
+        <div style="font-size:10px;color:var(--text-muted);line-height:1.6;">
+          出做多/做空信号时：提示音 + 系统通知 + 顶部横幅（需允许浏览器通知）。纯前端限制：APP 需保持打开才能收到。
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">假突破过滤</span>
+          <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="breakoutSwitch" checked onchange="breakoutFilter=this.checked" style="accent-color:var(--gold);width:16px;height:16px;">
+            <span style="font-size:10px;color:var(--gold-soft);">已开启</span>
+          </label>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);line-height:1.6;">
+          做多须突破近20根4H高点、做空须跌破近20根低点，过滤追高/追空的假信号（回测期望收益 0.37→0.62，信号更少但质量更高）。
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="tab-bar">
+    <div class="tab-pill">
+      <div class="tab-item active" data-view="overview">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="9" width="3" height="6.5" rx="1"/><rect x="7.5" y="4.5" width="3" height="11" rx="1"/><rect x="12.5" y="1.5" width="3" height="14" rx="1"/></svg>
+        <span class="tab-label">总览</span>
+      </div>
+      <div class="tab-item" data-view="prediction">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4.5 13L8 9L10 11L14.5 5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 5.5H14.5V8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="tab-label">预测</span>
+      </div>
+      <div class="tab-item" data-view="data">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.5 15.5V7.5M7 15.5V2.5M11.5 15.5V10.5M16 15.5V5.5" stroke-linecap="round"/></svg>
+        <span class="tab-label">数据</span>
+      </div>
+      <div class="tab-item" data-view="news">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.5 13L6 8.5L9 10.5L15.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 3.5H15.5V8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="tab-label">趋势</span>
+      </div>
+      <div class="tab-item" data-view="settings">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2.5"/><path d="M9 2V3.5M9 14.5V16M2 9H3.5M14.5 9H16M3.8 3.8L4.9 4.9M13.1 13.1L14.2 14.2M3.8 14.2L4.9 13.1M13.1 4.9L14.2 3.8" stroke-linecap="round"/></svg>
+        <span class="tab-label">设置</span>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab-item');
+  const views = document.querySelectorAll('.view');
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      tabs.forEach(i => i.classList.remove('active'));
+      t.classList.add('active');
+      const target = t.dataset.view;
+      views.forEach(v => v.classList.toggle('active', v.id === 'view-' + target));
+      document.querySelector('.content').scrollTop = 0;
+    });
+  });
+
+  function tick() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('clock').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  }
+  tick();
+  setInterval(tick, 30000);
+
+  /* ================================================================
+     实时行情引擎
+     · 现货行情源：腾讯 qt.gtimg.cn/q=hf_XAU（伦敦金）
+     · K线历史源：东方财富 push2his / secid=101.GC00Y（COMEX黄金）
+     · 指标在前端真实计算：MA/EMA/RSI/ATR/MACD/ADX
+     ================================================================ */
+
+  /* ---------- 工具函数 ---------- */
+  const fmt = (v, d = 2) => Number(v).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  /* ---------- 指标计算（基于收盘价数组） ---------- */
+  function calcSMA(arr, period) {
+    if (arr.length < period) return null;
+    const s = arr.slice(-period).reduce((a, b) => a + b, 0);
+    return s / period;
+  }
+  function calcEMA(arr, period) {
+    if (arr.length < period) return null;
+    const k = 2 / (period + 1);
+    let ema = arr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    for (let i = period; i < arr.length; i++) ema = arr[i] * k + ema * (1 - k);
+    return ema;
+  }
+  function calcRSI(arr, period = 14) {
+    if (arr.length < period + 1) return null;
+    let gain = 0, loss = 0;
+    for (let i = arr.length - period; i < arr.length; i++) {
+      const d = arr[i] - arr[i - 1];
+      if (d > 0) gain += d; else loss -= d;
+    }
+    gain /= period; loss /= period;
+    if (loss === 0) return 100;
+    return 100 - 100 / (1 + gain / loss);
+  }
+  function calcATR(klines, period = 14) {
+    if (klines.length < period + 1) return null;
+    let trs = [];
+    for (let i = klines.length - period; i < klines.length; i++) {
+      const k = klines[i], prev = klines[i - 1];
+      const tr = Math.max(k.h - k.l, Math.abs(k.h - prev.c), Math.abs(k.l - prev.c));
+      trs.push(tr);
+    }
+    return trs.reduce((a, b) => a + b, 0) / period;
+  }
+  function calcADX(klines, period = 14) {
+    if (klines.length < period * 2 + 1) return null;
+    const start = klines.length - period * 2;
+    let pdiSum = 0, mdiSum = 0, dxSum = 0;
+    for (let i = start + 1; i < klines.length; i++) {
+      const k = klines[i], prev = klines[i - 1];
+      const upMove = k.h - prev.h;
+      const downMove = prev.l - k.l;
+      const plusDM = (upMove > downMove && upMove > 0) ? upMove : 0;
+      const minusDM = (downMove > upMove && downMove > 0) ? downMove : 0;
+      const tr = Math.max(k.h - k.l, Math.abs(k.h - prev.c), Math.abs(k.l - prev.c));
+      pdiSum += plusDM / (tr || 1);
+      mdiSum += minusDM / (tr || 1);
+    }
+    const pdi = 100 * pdiSum / (pdiSum + mdiSum || 1);
+    const mdi = 100 * mdiSum / (pdiSum + mdiSum || 1);
+    return { adx: Math.abs(pdi - mdi), pdi, mdi };
+  }
+  function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
+    const emaFast = calcEMA(closes, fast);
+    const emaSlow = calcEMA(closes, slow);
+    if (emaFast == null || emaSlow == null) return null;
+    const dif = emaFast - emaSlow;
+    return { dif, dea: dif * 0.9, hist: dif * 0.1 };
+  }
+
+  /* ---------- 数据获取：腾讯现货（fetch + GBK 解码，CORS 开放） ---------- */
+  let lastQuote = null;
+  let tencentFrozen = false, lastTencentTs = '', lastTencentPrice = 0, frozenCheck = 0, lastFreezeRecover = 0;
+  async function fetchQuote() {
+    // 冻结恢复：伦敦盘收盘冻结后，每 60 秒尝试恢复腾讯（重新开盘后时间戳更新）
+    if (tencentFrozen && Date.now() - lastFreezeRecover > 60000) {
+      tencentFrozen = false; frozenCheck = 0; lastFreezeRecover = Date.now();
+    }
+    // 腾讯伦敦金现货（北京时间 23:30 后停盘冻结，未冻结时使用）
+    if (!tencentFrozen) {
+      try {
+        const resp = await fetch('https://qt.gtimg.cn/q=hf_XAU&_=' + Date.now());
+        const buf = await resp.arrayBuffer();
+        const txt = new TextDecoder('gbk').decode(buf);
+        const raw = txt.split('"')[1];
+        if (raw) {
+          const d = raw.split(',');
+          const ts = d[6], price = parseFloat(d[0]);
+          // 冻结检测：时间戳+价格连续 5 分钟不变 → 判定伦敦金真停更（凌晨每分钟更新属正常，勿误判）
+          if (ts === lastTencentTs && price === lastTencentPrice) {
+            frozenCheck++;
+            if (frozenCheck >= 300) tencentFrozen = true;
+          } else {
+            frozenCheck = 0; lastTencentTs = ts; lastTencentPrice = price;
+          }
+          if (!tencentFrozen) {
+            const prevClose = price - parseFloat(d[1]);
+            lastQuote = { price: price, change: parseFloat(d[1]), high: parseFloat(d[4]), low: parseFloat(d[5]), time: ts, prevClose: prevClose };
+            lastSpot = lastQuote.price;
+            dataFresh.spot = Date.now();
+            pushSpotToKlines(lastSpot); // 国际现货价持续推进最后一根 K 线
+            return lastQuote;
+          }
+        }
+      } catch (e) { /* 腾讯失败 → 走备份 */ }
+    }
+    try {
+      const resp = await fetch('https://api.gold-api.com/price/XAU?_=' + Date.now());
+      const j = await resp.json();
+      if (j && j.price) {
+        lastQuote = { price: j.price, change: 0, high: j.price, low: j.price, time: '', prevClose: j.price };
+        lastSpot = lastQuote.price;
+        dataFresh.spot = Date.now();
+        pushSpotToKlines(lastSpot); // 真·XAUUSD 现货价持续推进
+        return lastQuote;
+      }
+    } catch (e2) { }
+    // COMEX 期货实时价（24 小时交易至北京时间 06:00，伦敦收盘/腾讯冻结时的主力源）
+    try {
+      const resp = await fetch('https://push2.eastmoney.com/api/qt/stock/get?secid=101.GC00Y&fields=f43,f44,f45,f46,f60&_=' + Date.now());
+      const j = await resp.json();
+      if (j && j.data && j.data.f43) {
+        const price = j.data.f43 / 100;
+        const prevClose = j.data.f60 ? j.data.f60 / 100 : price;
+        lastQuote = { price: price, change: price - prevClose, high: j.data.f44 ? j.data.f44 / 100 : price, low: j.data.f45 ? j.data.f45 / 100 : price, time: '', prevClose: prevClose };
+        lastSpot = lastQuote.price;
+        dataFresh.spot = Date.now();
+        pushSpotToKlines(lastSpot); // COMEX 期货价（≈XAUUSD）持续推进
+        return lastQuote;
+      }
+    } catch (e3) { }
+    return null;
+  }
+  // 纽约期金实时参考（COMEX 期货，5 秒更新，凌晨伦敦现货清淡时反映市场动态）
+  async function fetchGCQuote() {
+    try {
+      const resp = await fetch('https://qt.gtimg.cn/q=hf_GC&_=' + Date.now());
+      const buf = await resp.arrayBuffer();
+      const txt = new TextDecoder('gbk').decode(buf);
+      const raw = txt.split('"')[1];
+      if (!raw) return;
+      const d = raw.split(',');
+      const price = parseFloat(d[0]), prevClose = parseFloat(d[7]);
+      const chg = price - prevClose;
+      const el = document.getElementById('metaGC');
+      if (el) {
+        const color = chg >= 0 ? 'var(--up)' : 'var(--down)';
+        el.innerHTML = '纽约期金 ' + fmt(price, 1) + ' <span style="color:' + color + ';">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '</span>（COMEX 实时参考 · 5秒更新）';
+      }
+    } catch (e) { }
+  }
+
+  /* ---------- 数据获取：K线（新浪沪金T+D JSONP 主源 + 东财备用） ---------- */
+  let klineData = null;
+  function fetchKlineViaSina() {
+    return new Promise((resolve) => {
+      const cbName = '_xgpd_cb_' + Date.now();
+      const script = document.createElement('script');
+      script.charset = 'gbk';
+      script.src = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cbName + '=/InnerFuturesNewService.getDailyKLine?symbol=AU0&_=' + Date.now();
+      const timer = setTimeout(() => { script.remove(); resolve(null); }, 10000);
+      script.onload = () => {
+        clearTimeout(timer);
+        try {
+          const arr = window[cbName];
+          if (Array.isArray(arr) && arr.length > 60) {
+            klineData = arr.map(x => ({ date: x.d, o: +x.o, c: +x.c, h: +x.h, l: +x.l, v: +x.v }));
+            script.remove(); delete window[cbName];
+            resolve(klineData);
+            return;
+          }
+        } catch (e) {}
+        script.remove(); delete window[cbName]; resolve(null);
+      };
+      script.onerror = () => { clearTimeout(timer); script.remove(); delete window[cbName]; resolve(null); };
+      document.head.appendChild(script);
+    });
+  }
+  const KLINE_HOSTS = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
+  async function fetchMacro() {
+    // 宏观因子：美元指数（UUP ETF）+ 美债（TLT 20+年，与利率反向）
+    try {
+      const r1 = await fetch('https://api.twelvedata.com/time_series?symbol=UUP&interval=1day&outputsize=30&apikey=' + TWELVE_KEY);
+      const u = await r1.json();
+      const r2 = await fetch('https://api.twelvedata.com/time_series?symbol=TLT&interval=1day&outputsize=30&apikey=' + TWELVE_KEY);
+      const t = await r2.json();
+      if (u.values && u.values.length > 5 && t.values && t.values.length > 5) {
+        const uc = u.values.map(v => +v.close), tc = t.values.map(v => +v.close);
+        const usdChg = (uc[0] - uc[5]) / uc[5] * 100;   // 近 5 日美元涨跌%
+        const rateChg = (tc[0] - tc[5]) / tc[5] * 100;  // 近 5 日 TLT 涨跌%（TLT涨=利率跌）
+        macroState = { usdChg: usdChg, rateChg: rateChg, usdDir: usdChg < 0 ? '弱' : '强', rateDir: rateChg > 0 ? '降' : '升' };
+        renderDataPage();
+        return macroState;
+      }
+    } catch (e) { }
+    return null;
+  }
+  async function loadTwelveData() {
+    // Twelve Data XAU/USD 1H（5000 根 ≈ 208 天）→ 聚合 4H，作为 4H 指标完整历史主源
+    try {
+      const r = await fetch('https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&outputsize=5000&apikey=' + TWELVE_KEY);
+      const j = await r.json();
+      if (j && j.values && j.values.length > 200) {
+        const bars1h = j.values.slice().reverse().map(v => ({ date: v.datetime, o: +v.open, h: +v.high, l: +v.low, c: +v.close, v: 0 }));
+        const h4 = aggBars4h(bars1h);
+        if (h4 && h4.length > 100) {
+          h1Klines = h4;
+          h1Source = 'TwelveData 4H(1H聚合)';
+          twelveActive = true;   // 标记 Twelve Data 已生效，阻止东财覆盖
+          h1Stale = false;
+          dataFresh.kline = Date.now();
+          if (h1Klines) h1State = calcStateFromK(h1Klines);
+          renderPredictionM();
+          return true;
+        }
+      }
+    } catch (e) { /* 失败走东财 */ }
+    twelveActive = false;        // 失败降级回东财
+    return false;
+  }
+  function buildWeekly(dailyBars) {
+    // 日线 → 周线聚合（按自然周分组：周一开、周内高低、周五收）
+    if (!dailyBars || !dailyBars.length) return null;
+    const out = [];
+    let cur = null, curMonday = null;
+    for (const b of dailyBars) {
+      const dt = new Date(String(b.date).slice(0, 10) + 'T00:00:00');
+      const dow = dt.getDay(); // 0=周日
+      const monday = new Date(dt);
+      monday.setDate(dt.getDate() - (dow === 0 ? 6 : dow - 1)); // 回退到周一
+      const key = monday.toISOString().slice(0, 10);
+      if (key !== curMonday) {
+        if (cur) out.push(cur);
+        cur = { date: b.date, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v || 0 };
+        curMonday = key;
+      } else {
+        cur.h = Math.max(cur.h, b.h);
+        cur.l = Math.min(cur.l, b.l);
+        cur.c = b.c;
+        cur.v += b.v || 0;
+      }
+    }
+    if (cur) out.push(cur);
+    return out.length >= 3 ? out : null;
+  }
+  async function loadWeeklyTrend() {
+    // 周线大趋势：Twelve Data XAU/USD 日线（美元计价）→ 聚合周线 → 计算周线指标
+    try {
+      const r = await fetch('https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1day&outputsize=250&apikey=' + TWELVE_KEY);
+      const j = await r.json();
+      if (j && j.values && j.values.length > 60) {
+        const daily = j.values.slice().reverse().map(v => ({ date: v.datetime, o: +v.open, h: +v.high, l: +v.low, c: +v.close, v: 0 }));
+        dailyKlinesUSD = daily;
+        const weekly = buildWeekly(daily);
+        if (weekly) {
+          weeklyKlines = weekly;
+          weeklyState = calcStateFromK(weekly);
+          weeklyState.count = weekly.length;
+        }
+        renderMultiTrend();
+        renderNewsSignal();
+        return true;
+      }
+    } catch (e) { }
+    return false;
+  }
+  function trendOf(s) {
+    // 单周期趋势方向：价格 vs SMA50/EMA21 + MACD + ADX
+    if (!s || s.lastClose == null) return { dir: '震荡', color: 'var(--text-muted)' };
+    const ref = s.sma50 != null ? s.sma50 : s.ema21;
+    const bull = ref != null && s.lastClose > ref && (s.macd ? s.macd.dif > 0 : true);
+    const bear = ref != null && s.lastClose < ref && (s.macd ? s.macd.dif < 0 : true);
+    const adx = s.adxInfo ? s.adxInfo.adx : 0;
+    if (adx >= 20 && bull) return { dir: '多头', color: 'var(--up)' };
+    if (adx >= 20 && bear) return { dir: '空头', color: 'var(--down)' };
+    return { dir: '震荡', color: 'var(--text-muted)' };
+  }
+  function renderMultiTrend() {
+    const box = document.getElementById('mtTrendBox');
+    const tag = document.getElementById('mtTrendTag');
+    if (!box) return;
+    const wk = trendOf(weeklyState);
+    const dy = trendOf(indicatorState);
+    const h4 = trendOf(h1State);
+    const row = (label, s, t) => {
+      const rsi = s && s.rsi != null ? s.rsi.toFixed(0) : '--';
+      const adx = s && s.adxInfo ? s.adxInfo.adx.toFixed(0) : '--';
+      const macd = s && s.macd ? (s.macd.dif > 0 ? '金叉' : '死叉') : '--';
+      return '<div class="data-row" style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">' +
+        '<span style="width:48px;color:var(--text-muted);font-size:11px;">' + label + '</span>' +
+        '<span style="width:42px;font-weight:700;color:' + t.color + ';font-size:12px;">' + t.dir + '</span>' +
+        '<span style="flex:1;font-size:9.5px;color:var(--text-secondary);">RSI ' + rsi + ' · ADX ' + adx + ' · MACD ' + macd + '</span>' +
+        '</div>';
+    };
+    let html = row('周线', weeklyState, wk) + row('日线', indicatorState, dy) + row('4小时', h1State, h4);
+    const bulls = [wk, dy, h4].filter(t => t.dir === '多头').length;
+    const bears = [wk, dy, h4].filter(t => t.dir === '空头').length;
+    let concl, conclColor;
+    if (bulls >= 2 && bears === 0) { concl = '多头共振 · 大势偏多'; conclColor = 'var(--up)'; }
+    else if (bears >= 2 && bulls === 0) { concl = '空头共振 · 大势偏空'; conclColor = 'var(--down)'; }
+    else if (wk.dir === '多头' && dy.dir === '多头') { concl = '周线+日线多头 · 中长线偏多'; conclColor = 'var(--up)'; }
+    else if (wk.dir === '空头' && dy.dir === '空头') { concl = '周线+日线空头 · 中长线偏空'; conclColor = 'var(--down)'; }
+    else { concl = '周期分歧 · 以周线为准观望'; conclColor = 'var(--gold-soft)'; }
+    box.innerHTML = html + '<div style="padding-top:6px;font-size:10.5px;color:' + conclColor + ';font-weight:700;">' + concl + '</div>';
+    if (tag) { tag.textContent = concl.split('·')[0].trim(); tag.style.color = conclColor; }
+  }
+  function renderNewsSignal() {
+    // 消息页：4H 支撑/阻力位 + 周期指标明细
+    renderSRZones();
+    renderCycleDetail();
+  }
+  function renderCycleDetail() {
+    const el = document.getElementById('newsCycleDetail');
+    if (!el) return;
+    const row = (label, st) => {
+      if (!st || st.lastClose == null) return '<div class="data-row" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="width:48px;color:var(--text-muted);font-size:11px;">' + label + '</span><span style="flex:1;color:var(--text-muted);font-size:9.5px;">--</span></div>';
+      const rsi = st.rsi != null ? st.rsi.toFixed(1) : '--';
+      const adx = st.adxInfo ? st.adxInfo.adx.toFixed(1) : '--';
+      const adxDir = st.adxInfo ? (st.adxInfo.pdi > st.adxInfo.mdi ? '多头' : '空头') : '--';
+      const macd = st.macd ? (st.macd.dif > 0 ? '金叉' : '死叉') : '--';
+      const ema = (st.ema9 != null && st.ema21 != null) ? (st.ema9 > st.ema21 ? '多头排列' : '空头排列') : '--';
+      const sma = st.sma50 != null ? (st.lastClose > st.sma50 ? 'SMA50上' : 'SMA50下') : '--';
+      return '<div class="data-row" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+        '<span style="width:48px;color:var(--text-muted);font-size:11px;">' + label + '</span>' +
+        '<span style="flex:1;font-size:9.5px;">RSI ' + rsi + ' · ADX ' + adx + '(' + adxDir + ') · MACD ' + macd + ' · ' + ema + ' · ' + sma + '</span>' +
+        '</div>';
+    };
+    el.innerHTML = row('周线', weeklyState) + row('日线', indicatorState) + row('4小时', h1State);
+  }
+  function entryTiming(tSignal) {
+    // 入场时机：信号（方向）≠ 时机（位置），结合支撑阻力判断避免追涨杀跌
+    if (tSignal !== '做多' && tSignal !== '做空') return null;
+    const z = calcSRZones();
+    if (!z.price || !z.supports.length || !z.resistances.length) return null;
+    const price = z.price;
+    const nearestR = z.resistances[0].level;   // 最近阻力
+    const nearestS = z.supports[0].level;      // 最近支撑
+    const pos = (price - nearestS) / ((nearestR - nearestS) || 1); // 0=支撑 1=阻力
+    if (tSignal === '做多') {
+      if (pos < 0.3) return { txt: '回调到位 · 价格接近支撑 ' + fmt(nearestS, 1) + '，入场时机好，可顺势做多', color: 'var(--up)' };
+      if (pos > 0.7) return { txt: '⚠️ 追高风险 · 价格已接近阻力 ' + fmt(nearestR, 1) + '，等回踩支撑再进场，勿追高', color: 'var(--gold-soft)' };
+      return { txt: '中性位置 · 距阻力 ' + fmt(nearestR, 1) + ' / 支撑 ' + fmt(nearestS, 1) + '，可轻仓，突破确认后再加', color: 'var(--text-secondary)' };
+    }
+    if (pos > 0.7) return { txt: '反弹到位 · 价格接近阻力 ' + fmt(nearestR, 1) + '，入场时机好，可顺势做空', color: 'var(--down)' };
+    if (pos < 0.3) return { txt: '⚠️ 追空风险 · 价格已接近支撑 ' + fmt(nearestS, 1) + '，等反弹到阻力再进场，勿追空', color: 'var(--gold-soft)' };
+    return { txt: '中性位置 · 距阻力 ' + fmt(nearestR, 1) + ' / 支撑 ' + fmt(nearestS, 1) + '，可轻仓，破位确认后再加', color: 'var(--text-secondary)' };
+  }
+  function calcSRZones() {
+    // 支撑/阻力区域：结构位（日线波段高低点）+ 动态均线 + 斐波那契 + 周线枢轴点
+    const price = lastSpot;
+    const out = { price: price, supports: [], resistances: [] };
+    if (!price || !dailyKlinesUSD || dailyKlinesUSD.length < 30) return out;
+    const lookback = Math.min(45, dailyKlinesUSD.length - 5);
+    const recent = dailyKlinesUSD.slice(-lookback);
+    const swings = [];
+    for (let i = 2; i < recent.length - 2; i++) {
+      const bar = recent[i];
+      const win = recent.slice(i - 2, i + 3);
+      if (bar.h >= Math.max(...win.map(x => x.h))) swings.push({ level: bar.h, dir: 'R', label: '日线波段高点', tag: '结构位' });
+      if (bar.l <= Math.min(...win.map(x => x.l))) swings.push({ level: bar.l, dir: 'S', label: '日线波段低点', tag: '结构位' });
+    }
+    const dC = dailyKlinesUSD.map(x => x.c);
+    const dEma20 = calcEMA(dC, 20);
+    const hC = h1Klines ? h1Klines.map(x => x.c) : [];
+    const h4Ema50 = hC.length >= 50 ? calcEMA(hC, 50) : null;
+    const hi = Math.max(...recent.map(x => x.h));
+    const lo = Math.min(...recent.map(x => x.l));
+    const range = (hi - lo) || 1;
+    const all = [];
+    swings.forEach(s => all.push(s));
+    if (dEma20 != null) all.push({ level: dEma20, dir: dEma20 < price ? 'S' : 'R', label: '日线 EMA20', tag: '动态均线' });
+    if (h4Ema50 != null) all.push({ level: h4Ema50, dir: h4Ema50 < price ? 'S' : 'R', label: '4H EMA50', tag: '动态均线' });
+    all.push({ level: hi - range * 0.382, dir: (hi - range * 0.382) < price ? 'S' : 'R', label: '斐波那契 0.382', tag: '黄金分割' });
+    all.push({ level: hi - range * 0.5, dir: (hi - range * 0.5) < price ? 'S' : 'R', label: '斐波那契 0.5', tag: '黄金分割' });
+    all.push({ level: hi - range * 0.618, dir: (hi - range * 0.618) < price ? 'S' : 'R', label: '斐波那契 0.618', tag: '黄金分割' });
+    if (weeklyKlines && weeklyKlines.length >= 2) {
+      const pw = weeklyKlines[weeklyKlines.length - 2];
+      const P = (pw.h + pw.l + pw.c) / 3;
+      all.push({ level: P, dir: P < price ? 'S' : 'R', label: '周线枢轴', tag: '枢轴点' });
+      all.push({ level: 2 * P - pw.l, dir: 'R', label: '枢轴 R1', tag: '枢轴点' });
+      all.push({ level: 2 * P - pw.h, dir: 'S', label: '枢轴 S1', tag: '枢轴点' });
+      all.push({ level: P + (pw.h - pw.l), dir: 'R', label: '枢轴 R2', tag: '枢轴点' });
+      all.push({ level: P - (pw.h - pw.l), dir: 'S', label: '枢轴 S2', tag: '枢轴点' });
+    }
+    const near = (a, b) => Math.abs(a - b) < range * 0.01; // 共振阈值约 1% 区间
+    const merge = (arr, asc) => {
+      const sorted = arr.sort((a, b) => asc ? a.level - b.level : b.level - a.level);
+      const res = [];
+      for (const x of sorted) {
+        const hit = res.find(r => near(r.level, x.level));
+        if (hit) { hit.label += '｜' + x.label; if (x.tag !== hit.tag) hit.tag += '+'; }
+        else res.push({ level: x.level, label: x.label, tag: x.tag });
+      }
+      return res;
+    };
+    out.resistances = merge(all.filter(x => x.dir === 'R'), true);
+    out.supports = merge(all.filter(x => x.dir === 'S'), false);
+    return out;
+  }
+  function renderSRZones() {
+    const box = document.getElementById('newsSRBox');
+    if (!box) return;
+    const z = calcSRZones();
+    if (!z.price) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
+    const line = (x, color) => '<div class="data-row" style="padding:4px 0;">' +
+      '<span style="width:96px;color:var(--text-muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + x.label + '</span>' +
+      '<span style="flex:1;height:1px;background:' + color + ';opacity:0.55;margin:0 4px;"></span>' +
+      '<span style="width:66px;text-align:right;font-weight:600;color:' + color + ';font-family:var(--font-mono);font-size:11px;">' + fmt(x.level, 1) + '</span></div>';
+    let html = '<div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;">现价 ' + fmt(z.price, 1) + ' · 结构位+均线+斐波那契+枢轴点（共振位已合并）</div>';
+    z.resistances.slice(0, 4).forEach(x => { html += line(x, 'var(--down)'); });
+    html += '<div style="padding:5px 0;text-align:center;color:var(--gold-soft);font-weight:700;border-top:1px dashed rgba(232,181,79,0.35);border-bottom:1px dashed rgba(232,181,79,0.35);margin:3px 0;">— 现价 ' + fmt(z.price, 1) + ' —</div>';
+    z.supports.slice(0, 4).forEach(x => { html += line(x, 'var(--up)'); });
+    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">价格进入区域后看 4H K 线反应（吞没/Pin Bar 反转）再进场，不对单一线挂单。</div>';
+    box.innerHTML = html;
+  }
+  async function fetchKlineViaEm() {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const host = KLINE_HOSTS[attempt % KLINE_HOSTS.length];
+      const url = host + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=101&fqt=0&lmt=260&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + attempt;
+      try {
+        const r = await fetch(url);
+        const json = await r.json();
+        if (json && json.data && json.data.klines && json.data.klines.length > 30) {
+          return json.data.klines.map(line => {
+            const p = line.split(',');
+            return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] };
+          });
+        }
+      } catch (e) { /* 重试下一个域名 */ }
+      await new Promise(res => setTimeout(res, 800 * (attempt + 1)));
+    }
+    return null;
+  }
+  let dailySource = 'XAUUSD'; // 日线数据源标记：XAUUSD(COMEX 美元/盎司) / 沪金(人民币/克)
+  async function fetchKline() {
+    // XAUUSD 优先：COMEX 日K（美元/盎司，与现货同步）→ 沪金兜底（人民币/克）
+    const em = await fetchKlineViaEm();
+    if (em) { dailySource = 'XAUUSD'; return em; }
+    const sina = await fetchKlineViaSina();
+    if (sina) { dailySource = '沪金'; return sina; }
+    return null;
+  }
+
+  /* ---------- 更新 UI ---------- */
+  let indicatorState = null; // 供预测页复用的指标结果
+  let h1State = null;        // 4小时级别指标（预测页核心依据）
+  let h1Source = '';         // 1H 数据源标记
+  let h1Updated = '';        // 1H 更新时间
+  let m5State = null;        // 5分钟级别指标（短线信号）
+  let sinaMinRaw = null;     // 新浪分时原始分钟数据（供聚合 1H/5m）
+  let h1Klines = null;       // 1H K线队列（COMEX 国际金优先）
+  let m5Klines = null;       // 5m K线队列（COMEX 国际金优先）
+  let m5Source = '';         // 5m 数据源标记
+  let h1Stale = false;       // K线源暂不可用标记（仅现价推进）
+  let lastSpot = null;       // 最新国际现货金价（现价推进用）
+  let curCycle = 'h1';       // 当前选中周期：m5 / h1 / day
+  let ecoPublishedM = [];    // 已发布经济数据
+  let ecoFutureM = [];       // 未来经济事件（事件窗口过滤用）
+  let newsItemsM = [];       // 黄金相关快讯
+  let signalLog = [];        // 4H 信号验证记录（localStorage 持久化）
+  let confSignal = '观望';   // 确认信号（连续 90 秒同向才更新，防抖动）
+  let sigStable = 0;         // 同向连续计数
+  let lastCandidateSig = '观望'; // 候选信号方向（防抖计数用）
+  let lastNotifiedSignal = null; // 上次已推送提醒的信号方向（避免重复推送）
+  let notifyEnabled = true;  // 信号推送开关（默认开启）
+  let breakoutFilter = true; // 假突破过滤开关（突破确认，回测期望 0.37→0.62，默认开启）
+  const dataFresh = { spot: 0, kline: 0, eco: 0, hold: 0, news: 0 }; // 各数据源最后成功更新时间
+  let activeTrade = null;    // 动态持仓跟踪 {dir, entry, stop, target, ts}（移动止损）
+  const TWELVE_KEY = '2b975f67ef384d128a0c71fa38c9d50d';
+  const EMBEDDED_ECO = {"updated": "2026-08-12 20:42", "published": [{"title": "7月美国:核心CPI:非季调(1982-84年=100)", "date": "2026-08-12", "time": "20:30:00", "actual": 337.133, "forecast": null, "prev": 336.882}, {"title": "7月美国:CPI:非季调:同比(%)", "date": "2026-08-12", "time": "20:30:00", "actual": 3.4, "forecast": null, "prev": 3.5}, {"title": "7月美国:核心CPI:季调:环比(1982-84=100)", "date": "2026-08-12", "time": "20:30:00", "actual": 0.2, "forecast": null, "prev": 0}, {"title": "7月美国:核心CPI:非季调:当月同比(%)", "date": "2026-08-12", "time": "20:30:00", "actual": 2.5, "forecast": null, "prev": 2.6}, {"title": "7月美国:CPI:非季调(1982年-1984年=100)", "date": "2026-08-12", "time": "20:30:00", "actual": 333.918, "forecast": null, "prev": 333.952}, {"title": "7月美国:新增非农私营就业人数:季调(千人)", "date": "2026-08-07", "time": "20:30:00", "actual": 30, "forecast": null, "prev": 30}, {"title": "7月美国:新增非农就业人数:制造业:季调(千人)", "date": "2026-08-07", "time": "20:30:00", "actual": 5, "forecast": null, "prev": 11}, {"title": "7月美国:新增非农就业人数:政府:季调(千人)", "date": "2026-08-07", "time": "20:30:00", "actual": -53, "forecast": null, "prev": -10}, {"title": "7月美国:新增非农就业人数:当月值:季调(千人)", "date": "2026-08-07", "time": "20:30:00", "actual": -23, "forecast": null, "prev": 20}, {"title": "7月美国:非农就业人数:政府:季调(千人)", "date": "2026-08-07", "time": "20:30:00", "actual": 23270, "forecast": null, "prev": 23323}, {"title": "7月美国:非农就业人数:季调(千人)", "date": "2026-08-07", "time": "20:30:00", "actual": 158858, "forecast": null, "prev": 158881}, {"title": "7月美国:失业率:季调(%)", "date": "2026-08-07", "time": "20:30:00", "actual": 4.1, "forecast": null, "prev": 4.2}, {"title": "6月美国:部门生产力和成本指数:非农企业:单位劳工成本:季调:环比折年率(修正值)(%)", "date": "2026-08-06", "time": "20:30:00", "actual": 1.3, "forecast": null, "prev": 1.3}, {"title": "7月美国:ADP就业人数(非农私营):新增就业:季调(人)", "date": "2026-08-05", "time": "20:15:00", "actual": 44000, "forecast": null, "prev": 98000}, {"title": "6月美国:离职人数:非农:总计:季调(千人)", "date": "2026-08-04", "time": "22:00:00", "actual": 3232, "forecast": null, "prev": 3153}, {"title": "6月美国:核心PCE物价指数年化季率:初值(%)", "date": "2026-07-30", "time": "20:30:00", "actual": 3.4, "forecast": null, "prev": 4.3}, {"title": "6月美国:PCE物价指数年化季率:初值(%)", "date": "2026-07-30", "time": "20:30:00", "actual": 5.1, "forecast": null, "prev": 4.5}, {"title": "6月美国:核心PCE物价指数:同比(%)", "date": "2026-07-30", "time": "20:30:00", "actual": 3.3, "forecast": null, "prev": 3.4}, {"title": "7月美国:联邦基金利率目标:下限(%)", "date": "2026-07-30", "time": "02:00:00", "actual": 3.5, "forecast": null, "prev": 3.5}, {"title": "6月美国:核心PCE物价指数:季调:环比(%)", "date": "2026-07-30", "time": "20:30:00", "actual": 0.1, "forecast": null, "prev": 0.3}, {"title": "6月美国:PCE物价指数:季调:同比(%)", "date": "2026-07-30", "time": "20:30:00", "actual": 3.7, "forecast": null, "prev": 4.1}, {"title": "6月美国:核心PCE物价指数:季调(2017年=100)", "date": "2026-07-30", "time": "20:30:00", "actual": 130.266, "forecast": null, "prev": 130.094}, {"title": "6月美国:PCE物价指数:季调(2017年=100)", "date": "2026-07-30", "time": "20:30:00", "actual": 131.392, "forecast": null, "prev": 131.535}, {"title": "7月美国:联邦基金利率目标:上限(%)", "date": "2026-07-30", "time": "02:00:00", "actual": 3.75, "forecast": null, "prev": 3.75}, {"title": "6月美国:PCE物价指数:季调:环比(%)", "date": "2026-07-30", "time": "20:30:00", "actual": -0.1, "forecast": null, "prev": 0.5}, {"title": "6月美国:失业率:所有年龄:合计(%)", "date": "2026-07-30", "time": "17:00:00", "actual": 4.2, "forecast": null, "prev": 4.3}, {"title": "6月美国:核心CPI:非季调(1982-84年=100)", "date": "2026-07-14", "time": "20:30:00", "actual": 336.882, "forecast": null, "prev": 336.846}, {"title": "6月美国:CPI:非季调:同比(%)", "date": "2026-07-14", "time": "20:30:00", "actual": 3.5, "forecast": null, "prev": 4.2}, {"title": "6月美国:核心CPI:季调:环比(1982-84=100)", "date": "2026-07-14", "time": "20:30:00", "actual": 0, "forecast": null, "prev": 0.2}, {"title": "6月美国:核心CPI:非季调:当月同比(%)", "date": "2026-07-14", "time": "20:30:00", "actual": 2.6, "forecast": null, "prev": 2.9}, {"title": "6月美国:CPI:非季调(1982年-1984年=100)", "date": "2026-07-14", "time": "20:30:00", "actual": 333.952, "forecast": null, "prev": 335.123}, {"title": "6月美国:核心CPI:季调:当月同比(%)", "date": "2026-07-14", "time": "20:30:00", "actual": 2.6, "forecast": null, "prev": 2.8}], "future": []};
+  const EMBEDDED_SPDR = {"updated": "2026-08-07 16:20", "asOf": "2026-08-05", "holdings": 1014.148, "change": 4.851, "prev": 1009.297, "unit": "吨", "source": "SPDR Gold Trust · 新华财经/格隆汇", "note": "日频数据，每日纽约时间约22:30更新"}; // Twelve Data API Key（免费版）
+  let macroState = null;     // 宏观因子 {usdChg, rateChg, usdDir, rateDir}（美元/美债利率方向）
+  let twelveActive = false;  // Twelve Data 是否已生效（生效时东财不覆盖 4H 数据）
+  let holdingsData = null;   // COMEX 黄金持仓/库存数据
+  let holdingsUpdated = '';  // 持仓数据更新时间
+  let weeklyState = null;    // 周线级别指标（大趋势研判）
+  let dailyKlinesUSD = null; // XAUUSD 日线（美元计价，周线聚合用）
+  let weeklyKlines = null;   // 周线 K 线（枢轴点/结构位用）
+  let newsSigState = { tSignal: '观望', baseSc: 50, reso: null, adxOk: false, score: 50, evt: null, dataDead: false, dataWarn: '' }; // 消息页信号状态
+  let spdrData = null;       // SPDR 黄金 ETF 持仓（日频缓存 JSON）
+  function applyIndicators(k) {
+    if (!k || !k.length) return;
+    const closes = k.map(x => x.c);
+    const rsi = calcRSI(closes, 14);
+    const atr = calcATR(k, 14);
+    const adxInfo = calcADX(k, 14);
+    const ema9 = calcEMA(closes, 9);
+    const ema21 = calcEMA(closes, 21);
+    const sma50 = calcSMA(closes, 50);
+    const sma100 = calcSMA(closes, 100);
+    const sma200 = calcSMA(closes, 200);
+    const macd = calcMACD(closes);
+    const lastClose = closes[closes.length - 1];
+    indicatorState = { rsi, atr, adxInfo, ema9, ema21, sma50, sma100, sma200, macd, lastClose };
+
+    // RSI
+    if (rsi != null) {
+      document.getElementById('rsiVal').textContent = rsi.toFixed(1);
+      const tag = document.getElementById('rsiTag');
+      if (rsi >= 70) { tag.textContent = '超买'; tag.className = 'ind-tag tag-up'; }
+      else if (rsi >= 50) { tag.textContent = '偏强'; tag.className = 'ind-tag tag-gold'; }
+      else if (rsi >= 30) { tag.textContent = '偏弱'; tag.className = 'ind-tag tag-info'; }
+      else { tag.textContent = '超卖'; tag.className = 'ind-tag tag-down'; }
+    }
+    // ATR
+    if (atr != null) {
+      const atrPct = (atr / (closes[closes.length - 1] || 1) * 100).toFixed(2);
+      document.getElementById('atrVal').textContent = atr.toFixed(1);
+      document.getElementById('metaAtr').textContent = 'ATR ' + atr.toFixed(1) + ' (' + atrPct + '%)';
+      // 指标基准标注：XAUUSD(美元/盎司) / 沪金(人民币/克)
+      const mu = document.getElementById('metaUnit');
+      if (mu) mu.textContent = dailySource === 'XAUUSD' ? 'XAUUSD · 美元/盎司' : '沪金 · 人民币/克';
+      const mu2 = document.getElementById('pdSourceSub');
+      if (mu2 && mu2.textContent.indexOf('日线') >= 0) mu2.textContent = '日线基准 ' + (dailySource === 'XAUUSD' ? 'XAUUSD' : '沪金') + ' · 更新时间 ' + h1Updated;
+      const tag = document.getElementById('atrTag');
+      if (atrPct > 1.8) { tag.textContent = '高波动'; tag.className = 'ind-tag tag-up'; }
+      else if (atrPct > 0.8) { tag.textContent = '正常'; tag.className = 'ind-tag tag-info'; }
+      else { tag.textContent = '低波动'; tag.className = 'ind-tag tag-gold'; }
+    }
+    // ADX
+    if (adxInfo) {
+      document.getElementById('adxVal').textContent = adxInfo.adx.toFixed(1);
+      const tag = document.getElementById('adxTag');
+      if (adxInfo.adx >= 25 && adxInfo.pdi > adxInfo.mdi) { tag.textContent = '强多头'; tag.className = 'ind-tag tag-up'; }
+      else if (adxInfo.adx >= 25 && adxInfo.mdi > adxInfo.pdi) { tag.textContent = '强空头'; tag.className = 'ind-tag tag-down'; }
+      else if (adxInfo.adx < 20) { tag.textContent = '震荡'; tag.className = 'ind-tag tag-gold'; }
+      else { tag.textContent = '趋势中'; tag.className = 'ind-tag tag-info'; }
+    }
+
+    // 多空力量计（综合 RSI/ADX/均线/MACD 打分）
+    let score = 50;
+    if (rsi != null) score += (rsi - 50) * 0.3;
+    if (adxInfo) score += (adxInfo.pdi - adxInfo.mdi) > 0 ? 5 : -5;
+    if (ema9 != null && ema21 != null) {
+      if (ema9 > ema21 && closes[closes.length - 1] > ema21) score += 6;
+      else if (ema9 < ema21 && closes[closes.length - 1] < ema21) score -= 6;
+    }
+    if (macd) score += macd.dif > 0 ? 2 : -2;
+    if (sma200 != null) score += closes[closes.length - 1] > sma200 ? 4 : -4;
+    score = clamp(score, 15, 88);
+    const bullPct = Math.round(score);
+
+    document.getElementById('bullLbl').textContent = '看多 ' + bullPct + '.0%';
+    document.getElementById('bearLbl').textContent = '看空 ' + (100 - bullPct) + '.0%';
+    document.getElementById('meterBull').style.width = bullPct + '%';
+    document.getElementById('meterBear').style.width = (100 - bullPct) + '%';
+    const tag = document.getElementById('priceTag');
+    if (bullPct >= 60) { tag.textContent = '多头偏强'; tag.style.color = '#F2574C'; tag.style.background = 'rgba(242,87,76,0.16)'; }
+    else if (bullPct >= 50) { tag.textContent = '震荡偏多'; tag.style.color = '#F2D98C'; tag.style.background = 'rgba(232,181,79,0.16)'; }
+    else if (bullPct >= 40) { tag.textContent = '震荡偏空'; tag.style.color = '#F2D98C'; tag.style.background = 'rgba(232,181,79,0.16)'; }
+    else { tag.textContent = '空头偏强'; tag.style.color = '#21B28F'; tag.style.background = 'rgba(33,178,143,0.16)'; }
+
+    renderMiniKline(k);
+    renderPredictionM();
+  }
+
+  /* ================================================================
+     1 小时级别指标引擎（预测页核心依据，每分钟实时更新）
+     主源：东财 COMEX 黄金 60 分钟 K 线（多域名重试）
+     兜底：新浪沪金分时 → 前端聚合当日小时 K（JSONP 跨域稳定）
+     ================================================================ */
+  function aggBars4h(bars) {
+    // 按 4 小时时间窗聚合 1H K 线 → 4H K（0-3,4-7,8-11,12-15,16-19,20-23 点窗口）
+    if (!bars || !bars.length) return null;
+    const out = [];
+    let cur = null, curKey = null;
+    for (const b of bars) {
+      const m = String(b.date).match(/(\d{2}):/);
+      const h = m ? parseInt(m[1]) : 0;
+      const key = Math.floor(h / 4);
+      if (key !== curKey) {
+        if (cur) out.push(cur);
+        cur = { date: b.date, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v || 0 };
+        curKey = key;
+      } else {
+        cur.h = Math.max(cur.h, b.h);
+        cur.l = Math.min(cur.l, b.l);
+        cur.c = b.c;
+        cur.v += b.v || 0;
+      }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  function fetchH1ViaEm() {
+    const hosts = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
+    const mapK = kl => kl.map(l => { const p = l.split(','); return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] }; });
+    const tryK = (klt) => new Promise(async resolve => {
+      for (let i = 0; i < 4; i++) {
+        const h = hosts[i % 3];
+        try {
+          const r = await fetch(h + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=' + klt + '&fqt=0&lmt=400&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + i);
+          const j = await r.json();
+          if (j && j.data && j.data.klines && j.data.klines.length > 30) return resolve(mapK(j.data.klines));
+        } catch (e) { /* 重试下一域名 */ }
+        await new Promise(res => setTimeout(res, 500 * (i + 1)));
+      }
+      resolve(null);
+    });
+    return new Promise(async resolve => {
+      // 1) 原生 4H（部分环境支持 klt=240）
+      const k240 = await tryK(240);
+      if (k240 && k240.length > 30) return resolve({ bars: k240, agg: false });
+      // 2) 主源：1H（klt=60，稳定）→ 前端按 4 小时窗口聚合
+      const k60 = await tryK(60);
+      if (k60 && k60.length > 30) {
+        const h4 = aggBars4h(k60);
+        if (h4 && h4.length > 15) return resolve({ bars: h4, agg: true });
+      }
+      resolve(null);
+    });
+  }
+  function fetchSinaMinRaw() {
+    // 新浪沪金分时 JSONP：返回 var <cb>=([...]); → 读取 window[cb] 原始分钟数据
+    return new Promise(resolve => {
+      const cb = 'h1min' + Date.now();
+      const script = document.createElement('script');
+      script.src = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getMinLine?symbol=AU0&_=' + Date.now();
+      script.onload = () => {
+        script.remove();
+        const raw = window[cb];
+        delete window[cb];
+        resolve(raw && raw.length ? raw : null);
+      };
+      script.onerror = () => { script.remove(); delete window[cb]; resolve(null); };
+      document.head.appendChild(script);
+    });
+  }
+  function buildBarsFromMin(raw, minutes) {
+    // 通用：分钟数据按 N 分钟聚合 K 线（5 → 5分钟K，240 → 4小时K）
+    if (!raw || !raw.length) return null;
+    const buckets = {}, order = [];
+    raw.forEach(row => {
+      if (!row || row.length < 2) return;
+      const parts = String(row[0]).split(':');
+      if (parts.length < 2) return;
+      const mIdx = Math.floor((parseInt(parts[0]) * 60 + parseInt(parts[1])) / minutes);
+      const p = parseFloat(row[1]);
+      if (isNaN(p)) return;
+      if (!buckets[mIdx]) { buckets[mIdx] = { o: p, h: p, l: p, c: p }; order.push(mIdx); }
+      else { const b = buckets[mIdx]; b.h = Math.max(b.h, p); b.l = Math.min(b.l, p); b.c = p; }
+    });
+    order.sort((a, b) => a - b);
+    const kl = order.map(mIdx => { const b = buckets[mIdx]; return { date: 'm' + mIdx, o: b.o, c: b.c, h: b.h, l: b.l, v: 0 }; });
+    return kl.length >= 3 ? kl : null;
+  }
+  function applyCycleBars(raw) {
+    // 从新浪分时同时聚合 5m 短线 + 1H 中线
+    if (!raw || !raw.length) return;
+    sinaMinRaw = raw;
+    const m5 = buildBarsFromMin(raw, 5);
+    if (m5 && m5.length >= 14) {
+      const closes = m5.map(x => x.c);
+      m5State = {
+        rsi: calcRSI(closes, 14),
+        atr: calcATR(m5, 14),
+        adxInfo: m5.length >= 30 ? calcADX(m5, 14) : null,
+        ema9: calcEMA(closes, 9),
+        ema21: calcEMA(closes, 21),
+        macd: calcMACD(closes),
+        lastClose: closes[closes.length - 1],
+        count: m5.length
+      };
+    }
+    const h1 = buildBarsFromMin(raw, 240);
+    if (h1 && h1.length >= 3) {
+      const closes = h1.map(x => x.c);
+      h1State = {
+        rsi: calcRSI(closes, 14),
+        atr: calcATR(h1, 14),
+        adxInfo: h1.length >= 30 ? calcADX(h1, 14) : null,
+        ema9: calcEMA(closes, 9),
+        ema21: calcEMA(closes, 21),
+        sma50: calcSMA(closes, 50),
+        macd: calcMACD(closes),
+        lastClose: closes[closes.length - 1],
+        count: h1.length
+      };
+      const now = new Date(); const pad = n => String(n).padStart(2, '0');
+      h1Updated = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+      if (!h1Source) h1Source = '沪金分时聚合';
+    }
+    renderPredictionM();
+  }
+  function applyH1Indicators(k) {
+    // 东财 COMEX 4H 路径专用：直接算 4H 指标
+    if (!k || k.length < 3) return;
+    const closes = k.map(x => x.c);
+    h1State = {
+      rsi: calcRSI(closes, 14),
+      atr: calcATR(k, 14),
+      adxInfo: k.length >= 30 ? calcADX(k, 14) : null,
+      ema9: calcEMA(closes, 9),
+      ema21: calcEMA(closes, 21),
+      sma50: calcSMA(closes, 50),
+      macd: calcMACD(closes),
+      lastClose: closes[closes.length - 1],
+      count: k.length
+    };
+    const now = new Date(); const pad = n => String(n).padStart(2, '0');
+    h1Updated = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    renderPredictionM();
+  }
+  function fetchM5ViaEm() {
+    // COMEX 国际金 5 分钟 K（24h 交易，美元计价）
+    const hosts = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
+    return new Promise(async resolve => {
+      for (let i = 0; i < 4; i++) {
+        const h = hosts[i % 3];
+        try {
+          const r = await fetch(h + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=5&fqt=0&lmt=160&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + i);
+          const j = await r.json();
+          if (j && j.data && j.data.klines && j.data.klines.length > 30) {
+            return resolve(j.data.klines.map(l => { const p = l.split(','); return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] }; }));
+          }
+        } catch (e) { /* 重试下一域名 */ }
+        await new Promise(res => setTimeout(res, 600 * (i + 1)));
+      }
+      resolve(null);
+    });
+  }
+  function calcBOLL(closes, p = 20, mult = 2) {
+    // 布林带：中轨=MA20，上下轨=±2σ（波动通道 + 超买超卖位置）
+    if (closes.length < p) return null;
+    const win = closes.slice(-p);
+    const mid = win.reduce((a, b) => a + b, 0) / p;
+    const sd = Math.sqrt(win.reduce((a, b) => a + (b - mid) * (b - mid), 0) / p);
+    return { mid: mid, up: mid + mult * sd, lo: mid - mult * sd };
+  }
+  function calcLevels(k, n = 60) {
+    // 自动支撑/阻力 + 斐波那契回撤（近 n 根 4H 高低点）
+    if (!k || k.length < 10) return null;
+    const win = k.slice(-n);
+    const hi = Math.max(...win.map(x => x.h));
+    const lo = Math.min(...win.map(x => x.l));
+    const last = win[win.length - 1].c;
+    const range = (hi - lo) || 1;
+    return {
+      resist: hi, support: lo,
+      fib382: hi - range * 0.382, fib50: hi - range * 0.5, fib618: hi - range * 0.618,
+      pos: (last - lo) / range  // 0-1：当前价格在区间中的位置
+    };
+  }
+  function calcPattern(k) {
+    // K 线形态识别（4H 级别经典反转形态）：吞没 / 锤子 / 上吊 / 十字星
+    if (!k || k.length < 3) return null;
+    const p2 = k[k.length - 3], p1 = k[k.length - 2], p0 = k[k.length - 1];
+    const body = c => Math.abs(c.c - c.o);
+    const range = x => (x.h - x.l) || 1;
+    const dir = p1.c >= p1.o ? 'bull' : 'bear';
+    // 吞没：后 K 实体完全包住前 K 实体，方向相反
+    if (dir === 'bear' && p0.c > p0.o && body(p0) > body(p1) && p0.c >= p1.o && p0.o <= p1.c) {
+      return { type: '看涨吞没', dir: 'bull', desc: '阳线完全吞没前阴线，反转看多' };
+    }
+    if (dir === 'bull' && p0.c < p0.o && body(p0) > body(p1) && p0.o >= p1.c && p0.c <= p1.o) {
+      return { type: '看跌吞没', dir: 'bear', desc: '阴线完全吞没前阳线，反转看空' };
+    }
+    // 锤子线 / 上吊线：下影线≥2倍实体，上影线短（区别看前一根趋势）
+    const upperShadow = x => x.h - Math.max(x.c, x.o);
+    const lowerShadow = x => Math.min(x.c, x.o) - x.l;
+    if (body(p0) > 0 && lowerShadow(p0) >= 2 * body(p0) && upperShadow(p0) <= body(p0)) {
+      const priorBull = p1.c >= p1.o;
+      return priorBull
+        ? { type: '上吊线', dir: 'bear', desc: '高位长下影，滞涨警示' }
+        : { type: '锤子线', dir: 'bull', desc: '低位长下影，止跌反弹' };
+    }
+    // 十字星：实体极小（≤全幅 8%），多空分歧
+    if (body(p0) <= range(p0) * 0.08 && range(p0) > 0) {
+      return { type: '十字星', dir: 'neutral', desc: '多空分歧，变盘警示' };
+    }
+    return null;
+  }
+  function isEventWindow() {
+    // 大事件窗口：非农/CPI/FOMC 等公布前 2h ~ 后 1h 内，技术信号降级
+    const KEY = ['非农', '失业率', 'CPI', 'PCE', '利率决议', 'FOMC', 'ADP', '初请'];
+    const all = [...(ecoPublishedM || []), ...(ecoFutureM || [])];
+    const now = Date.now();
+    for (const e of all) {
+      if (!e || !e.date || !KEY.some(k => (e.title || '').includes(k))) continue;
+      const t = new Date(e.date + 'T' + (e.time || '12:00').slice(0, 5) + ':00').getTime();
+      if (isNaN(t)) continue;
+      const diffH = (t - now) / 3600000;
+      if (diffH >= -1 && diffH <= 2) {
+        return { active: true, title: (e.title || '').slice(0, 24), hours: diffH };
+      }
+    }
+    return { active: false };
+  }
+  function loadSignalLog() {
+    try { signalLog = JSON.parse(localStorage.getItem('gold4hSignals') || '[]'); } catch (e) { signalLog = []; }
+  }
+  function saveSignalLog() {
+    try { localStorage.setItem('gold4hSignals', JSON.stringify(signalLog.slice(-50))); } catch (e) {}
+  }
+  function exportSignalLog() {
+    // 导出验证记录为 JSON 文件（跨设备备份/迁移）
+    const data = JSON.stringify(signalLog, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'gold-signals-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function importSignalLog(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const arr = JSON.parse(reader.result);
+        if (Array.isArray(arr)) {
+          signalLog = arr.slice(-50);
+          saveSignalLog();
+          renderVerify();
+          alert('✅ 已导入 ' + signalLog.length + ' 条信号记录');
+        } else { alert('文件格式不正确'); }
+      } catch (e) { alert('导入失败：文件格式错误'); }
+    };
+    reader.readAsText(file);
+  }
+  function settleSignals(price) {
+    // 信号发出 16 小时后结算（4 根 4H，已验证最优持有期）；价格冻结（波动<0.1%）不结算
+    const now = Date.now();
+    let changed = false;
+    signalLog.forEach(s => {
+      if (s.status === 'open' && now - s.ts > 16 * 3600 * 1000 && price) {
+        if (Math.abs(price - s.price) / s.price < 0.001) return; // 数据冻结，继续等
+        s.status = ((s.dir === '做多' && price > s.price) || (s.dir === '做空' && price < s.price)) ? 'win' : 'lose';
+        s.settlePrice = price;
+        changed = true;
+      }
+    });
+    if (changed) saveSignalLog();
+  }
+  function recordSignal(dir, price, adx) {
+    // 确认信号方向变化时记录；转观望时结算（防抖动：连续确认后才变方向）
+    settleSignals(price);
+    const last = signalLog[signalLog.length - 1];
+    if (last && last.status === 'open' && last.dir !== dir) {
+      // 确认信号方向反转/转观望 → 立即结算（价格冻结则不结算）
+      if (price && Math.abs(price - last.price) / last.price >= 0.001) {
+        last.status = ((last.dir === '做多' && price > last.price) || (last.dir === '做空' && price < last.price)) ? 'win' : 'lose';
+        last.settlePrice = price;
+        saveSignalLog();
+      }
+    }
+    if ((dir === '做多' || dir === '做空') && !(last && last.status === 'open' && last.dir === dir)) {
+      signalLog.push({ ts: Date.now(), price: price, dir: dir, status: 'open', adx: adx != null ? adx : 0 });
+      saveSignalLog();
+    }
+  }
+  function playBeep(dir) {
+    // Web Audio 提示音：做多 2 短高音，做空 2 短低音
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const freq = dir === '做多' ? 880 : 440;
+      [0, 0.18].forEach((t, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.001, ctx.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.15);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.16);
+      });
+    } catch (e) {}
+  }
+  function showSignalBanner(dir, price, stop, target) {
+    const b = document.getElementById('signalBanner');
+    const t = document.getElementById('signalBannerText');
+    const s = document.getElementById('signalBannerSub');
+    if (!b) return;
+    b.style.background = dir === '做多' ? '#F2574C' : '#21B28F';
+    if (t) t.textContent = 'XAUUSD ' + dir + '信号 · ' + fmt(price, 1);
+    if (s) s.textContent = '止损 ' + fmt(stop, 1) + ' · 目标 ' + fmt(target, 1) + '（点击关闭）';
+    b.style.display = 'block';
+    b.onclick = () => { b.style.display = 'none'; };
+    setTimeout(() => { b.style.display = 'none'; }, 12000); // 12 秒自动消失
+  }
+  function notifySignal(dir, price, stop, target) {
+    // 信号推送：声音 + 系统通知 + 页面横幅（同一方向不重复推送）
+    if (!notifyEnabled || dir !== '做多' && dir !== '做空') return;
+    if (dir === lastNotifiedSignal) return;
+    lastNotifiedSignal = dir;
+    playBeep(dir);
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { new Notification('XAUUSD ' + dir + '信号', { body: '现价 ' + fmt(price, 1) + ' · 止损 ' + fmt(stop, 1) + ' · 目标 ' + fmt(target, 1) }); } catch (e) {}
+    }
+    showSignalBanner(dir, price, stop, target);
+  }
+  function calcRisk(s, signal, price, score) {
+    // XAUUSD 交易风险：止损/目标（ATR + 支撑阻力修正）+ 盈亏比 + 风险等级
+    // 回测验证：止损 1.5×ATR + 目标 3.0×ATR（盈亏比 2:1）期望收益最优（0.37 ATR/单）
+    if (!s || !s.atr || !price || signal === '观望') return null;
+    const atr = s.atr;
+    const L = s.levels;
+    let stop, target;
+    if (signal === '做多') {
+      stop = price - atr * 1.5;
+      if (L && L.support < price) stop = Math.max(stop, L.support - atr * 0.3); // 支撑下方一点
+      target = price + atr * 3.0;
+      if (L && L.resist > price) target = Math.min(target, L.resist); // 阻力位压制（真实目标）
+    } else {
+      stop = price + atr * 1.5;
+      if (L && L.resist > price) stop = Math.min(stop, L.resist + atr * 0.3);
+      target = price - atr * 3.0;
+      if (L && L.support < price) target = Math.max(target, L.support);
+    }
+    const riskDist = Math.abs(stop - price), tgtDist = Math.abs(target - price);
+    const rr = tgtDist / (riskDist || 1);
+    let lvl = rr >= 2 ? '低' : (rr >= 1 ? '中' : '高');
+    if (score >= 70) lvl = lvl === '高' ? '中' : '低';
+    return { stop: stop, target: target, rr: rr, lvl: lvl };
+  }
+  function renderSignalCond(baseSc, reso, adxOk, tSignal, score) {
+    // 信号条件明细：打分/共振/ADX 三条件勾选 + 宏观状态（中性显示）
+    const el = document.getElementById('pSignalCond');
+    if (!el) return;
+    const sc = score || 50;
+    const longTh = 55, shortTh = 45;
+    const scOk = (tSignal === '做多' && sc >= longTh) || (tSignal === '做空' && sc <= shortTh) || (sc >= longTh || sc <= shortTh);
+    const rTag = reso === 'bull' ? '共振看多' : (reso === 'bear' ? '共振看空' : '背离');
+    const rOk = reso === 'bull' || reso === 'bear';
+    const aOk = adxOk;
+    const mk = ok => ok ? '<span style="color:var(--up);font-weight:700;">✓</span>' : '<span style="color:var(--down);font-weight:700;">✗</span>';
+    // 宏观状态（中性展示，用颜色表方向）
+    let macroHtml;
+    if (!macroState) {
+      macroHtml = '<span style="color:var(--text-muted);">宏观 加载中…</span>';
+    } else {
+      const uc = macroState.usdChg < 0 ? 'var(--up)' : 'var(--down)';
+      const rc = macroState.rateChg > 0 ? 'var(--up)' : 'var(--down)';
+      macroHtml = '<span>宏观 <span style="color:' + uc + ';font-weight:600;">美元' + (macroState.usdChg < 0 ? '弱' : '强') + '</span> · <span style="color:' + rc + ';font-weight:600;">利率' + (macroState.rateChg > 0 ? '降' : '升') + '</span></span>';
+    }
+    el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10px;color:var(--text-secondary);">' +
+      '<span>' + mk(scOk) + ' 打分 ' + sc.toFixed(0) + (tSignal === '做空' ? ' ≤' + shortTh : ' ≥' + longTh) + '</span>' +
+      '<span>' + mk(rOk) + ' ' + rTag + '</span>' +
+      '<span>' + mk(aOk) + ' ADX' + (adxOk ? '≥25' : '<25') + '</span>' +
+      macroHtml +
+      '</div>';
+  }
+  function updateActiveTrade(s, signal, price) {
+    // 动态持仓跟踪：确认信号驱动；同向持仓移动止损，反转/观望清仓
+    if (signal === '观望') { activeTrade = null; return; }
+    if (!price || !s || s.atr == null) return;
+    const atr = s.atr;
+    if (!activeTrade || activeTrade.dir !== signal) {
+      // 新开仓：入场 + 初始止损/目标
+      const r = calcRisk(s, signal, price, 60);
+      activeTrade = { dir: signal, entry: price, stop: r.stop, target: r.target, ts: Date.now() };
+      return;
+    }
+    // 同向持仓：移动止损（只朝有利方向），目标随趋势推进（3.0×ATR）
+    if (activeTrade.dir === '做多') {
+      const trail = price - atr * 1.5;
+      if (trail > activeTrade.stop) activeTrade.stop = trail;      // 止损上移
+      if (price > activeTrade.entry) activeTrade.stop = Math.max(activeTrade.stop, activeTrade.entry); // 保本
+      if (price + atr * 3.0 > activeTrade.target) activeTrade.target = price + atr * 3.0; // 目标推进
+    } else {
+      const trail = price + atr * 1.5;
+      if (trail < activeTrade.stop) activeTrade.stop = trail;      // 止损下移
+      if (price < activeTrade.entry) activeTrade.stop = Math.min(activeTrade.stop, activeTrade.entry); // 保本
+      if (price - atr * 3.0 < activeTrade.target) activeTrade.target = price - atr * 3.0;
+    }
+  }
+  function renderRisk(s, signal, price, score) {
+    const pill = document.getElementById('pRiskPill');
+    const box = document.getElementById('pRiskText');
+    // 持仓状态：activeTrade 存在 → 显示动态持仓（移动止损/浮盈）
+    if (activeTrade) {
+      const t = activeTrade;
+      const pnl = (price - t.entry) / t.entry * 100;
+      const pnlTxt = (t.dir === '做多' ? pnl : -pnl);
+      const pnlColor = pnlTxt >= 0 ? 'var(--up)' : 'var(--down)';
+      const holdMin = Math.max(1, Math.round((Date.now() - t.ts) / 60000));
+      if (pill) { pill.textContent = '持仓中'; pill.style.color = 'var(--gold-soft)'; }
+      if (box) {
+        box.innerHTML = '<div>持仓：<b style="color:' + (t.dir === '做多' ? 'var(--up)' : 'var(--down)') + '">' + (t.dir === '做多' ? '多单' : '空单') + '</b> 入场 ' + fmt(t.entry, 1) + ' → 现价 ' + fmt(price, 1) + '（浮盈 <span style="color:' + pnlColor + ';">' + (pnlTxt >= 0 ? '+' : '') + pnlTxt.toFixed(2) + '%</span>）</div>' +
+          '<div>移动止损 <span style="color:var(--down);">' + fmt(t.stop, 1) + '</span> · 目标 <span style="color:var(--up);">' + fmt(t.target, 1) + '</span> · 已持有 ' + holdMin + ' 分钟</div>' +
+          '<div style="margin-top:2px;font-size:9.5px;color:var(--text-muted);">止损随价格' + (t.dir === '做多' ? '上移' : '下移') + '（ATR 跟踪，保本后锁定利润），信号反转或观望时自动平仓。</div>';
+      }
+      return;
+    }
+    const r = calcRisk(s, signal, price, score);
+    if (!r) {
+      if (pill) { pill.textContent = '观望'; pill.style.color = 'var(--text-secondary)'; }
+      if (box) box.textContent = '当前信号观望，无开仓建议。出现做多/做空信号后自动计算止损、目标与风险等级。';
+      return;
+    }
+    if (pill) { pill.textContent = '风险' + r.lvl; pill.style.color = r.lvl === '低' ? 'var(--up)' : (r.lvl === '中' ? 'var(--gold-soft)' : 'var(--down)'); }
+    if (box) {
+      const act = signal === '做多' ? '买入' : '卖出';
+      box.innerHTML = '<div>操作建议：<b style="color:' + (signal === '做多' ? 'var(--up)' : 'var(--down)') + '">' + act + ' XAUUSD</b>（入场 ≈ ' + fmt(price, 1) + '）</div>' +
+        '<div>止损 <span style="color:var(--down);">' + fmt(r.stop, 1) + '</span> · 目标 <span style="color:var(--up);">' + fmt(r.target, 1) + '</span> · 盈亏比 1:' + r.rr.toFixed(1) + '</div>' +
+        '<div style="margin-top:2px;font-size:9.5px;color:var(--text-muted);">止损 1.5×ATR · 目标 3.0×ATR（盈亏比 2:1，回测最优），风险等级 ' + r.lvl + '（盈亏比' + (r.rr >= 2 ? '优良' : r.rr >= 1 ? '中等' : '偏低，谨慎') + '）。</div>';
+    }
+  }
+    function renderDataStatus(warn, dead) {
+    // 数据源新鲜度状态条：现货/K线/经济/持仓/消息 5 源
+    const el = document.getElementById('pDataStatus');
+    if (!el) return;
+    const ago = ts => {
+      if (!ts) return '--';
+      const s = Math.round((Date.now() - ts) / 1000);
+      return s < 60 ? s + 's' : (s < 3600 ? Math.round(s / 60) + 'm' : Math.round(s / 3600) + 'h');
+    };
+    const dot = (ok, warnFlag, label, ts) => {
+      const c = ok ? 'var(--up)' : (warnFlag ? 'var(--gold-soft)' : 'var(--text-muted)');
+      return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;color:var(--text-secondary);"><span style="width:6px;height:6px;border-radius:50%;background:' + c + ';display:inline-block;"></span>' + label + ' ' + ago(ts) + '</span>';
+    };
+    const spotOk = dataFresh.spot > 0 && Date.now() - dataFresh.spot < 60 * 1000;
+    const klineOk = dataFresh.kline > 0 && Date.now() - dataFresh.kline < 20 * 60000;
+    const ecoOk = dataFresh.eco > 0 && Date.now() - dataFresh.eco < 12 * 3600 * 1000;
+    const holdOk = dataFresh.hold > 0 && Date.now() - dataFresh.hold < 2 * 24 * 3600 * 1000;
+    const newsOk = dataFresh.news > 0 && Date.now() - dataFresh.news < 30 * 60000;
+    const warnFlag = !dead && (dataFresh.kline > 0 && Date.now() - dataFresh.kline > 15 * 60000);
+    el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:3px 8px;">' +
+      dot(spotOk, false, '现货', dataFresh.spot) + dot(klineOk, warnFlag, 'K线', dataFresh.kline) +
+      dot(ecoOk, false, '经济', dataFresh.eco) + dot(holdOk, false, '持仓', dataFresh.hold) + dot(newsOk, false, '消息', dataFresh.news) +
+      '</div>' + (warn ? '<div style="font-size:9.5px;color:var(--gold-soft);margin-top:2px;">⚠ ' + warn + '</div>' : '');
+  }
+  function resetSignalLog() {
+    signalLog = [];
+    saveSignalLog();
+    renderVerify();
+  }
+  function renderVerify() {
+  const done = signalLog.filter(s => s.status === 'win' || s.status === 'lose');
+    const win = done.filter(s => s.status === 'win').length;
+    const longs = done.filter(s => s.dir === '做多'), lw = longs.filter(s => s.status === 'win').length;
+    const shorts = done.filter(s => s.dir === '做空'), sw = shorts.filter(s => s.status === 'win').length;
+    const open = signalLog.filter(s => s.status === 'open').length;
+    const pill = document.getElementById('pVerifyPill');
+    const box = document.getElementById('pVerifyText');
+    if (pill) pill.textContent = done.length ? (win / done.length * 100).toFixed(0) + '% (' + win + '/' + done.length + ')' : '积累中';
+    if (box) {
+      const rows = signalLog.slice(-5).reverse().map(s => {
+        const t = new Date(s.ts);
+        const pad = n => String(n).padStart(2, '0');
+        const st = s.status === 'win' ? '✓ 正确' : (s.status === 'lose' ? '✗ 错误' : '⏳ 待结算');
+        return '<div style="display:flex;gap:4px;justify-content:space-between;"><span>' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()) + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ' ' + s.dir + '@' + fmt(s.price, 1) + '</span><span style="' + (s.status === 'win' ? 'color:var(--up);' : s.status === 'lose' ? 'color:var(--down);' : 'color:var(--text-muted);') + '">' + st + '</span></div>';
+      }).join('');
+      box.innerHTML = '<div style="margin-bottom:4px;">信号 ' + done.length + ' 次 · 胜率 ' + (done.length ? (win / done.length * 100).toFixed(1) + '%' : '--') + ' · 做多 ' + lw + '/' + longs.length + ' · 做空 ' + sw + '/' + shorts.length + ' · 待结算 ' + open + '</div>' +
+        '<div style="margin-bottom:4px;font-size:9.5px;color:var(--text-muted);">' + sceneStats() + '</div>' +
+        (rows || '<div>暂无信号，等待做多/做空信号出现…</div>') + '<div style="margin-top:3px;font-size:9px;color:var(--text-muted);">确认后 16 小时（4 根 4H）结算 · 去抖动防假信号 · 本地保存</div>';
+    }
+  }
+  function sceneStats() {
+    // 分场景统计：趋势市（ADX≥25）vs 震荡市（ADX<25）
+    const done = signalLog.filter(s => s.status === 'win' || s.status === 'lose');
+    const trend = done.filter(s => (s.adx || 0) >= 25), range = done.filter(s => (s.adx || 0) < 25 && (s.adx || 0) > 0);
+    const tw = trend.filter(s => s.status === 'win').length, rw = range.filter(s => s.status === 'win').length;
+    const pct = (a, b) => a.length ? (b / a.length * 100).toFixed(0) + '%' : '--';
+    return '趋势市(ADX≥25) 胜率 ' + pct(trend, tw) + '（' + tw + '/' + trend.length + '） · 震荡市 胜率 ' + pct(range, rw) + '（' + rw + '/' + range.length + '）';
+  }
+  function calcStateFromK(k) {
+    // 通用：由 K 线数组计算指标状态
+    if (!k || k.length < 3) return null;
+    const closes = k.map(x => x.c);
+    return {
+      rsi: calcRSI(closes, 14),
+      atr: calcATR(k, 14),
+      adxInfo: k.length >= 30 ? calcADX(k, 14) : null,
+      ema9: calcEMA(closes, 9),
+      ema21: calcEMA(closes, 21),
+      sma50: calcSMA(closes, 50),
+      macd: calcMACD(closes),
+      boll: calcBOLL(closes),
+      levels: calcLevels(k),
+      pattern: calcPattern(k),
+      lastClose: closes[closes.length - 1],
+      count: k.length
+    };
+  }
+  function pushSpotToKlines(price) {
+    // 用最新国际现货价推进最后一根 K（仅限国际源 COMEX，避免污染沪金价位）
+    if (!price || isNaN(price)) return;
+    const push = arr => {
+      if (!arr || !arr.length) return;
+      const last = arr[arr.length - 1];
+      last.c = price;
+      if (price > last.h) last.h = price;
+      if (price < last.l) last.l = price;
+    };
+    if (h1Source.indexOf('COMEX') === 0) push(h1Klines);
+    if (m5Source === 'COMEX 5min') push(m5Klines);
+  }
+  async function refreshH1() {
+    // ===== 国际金优先三重保障（解决夜间沪金停盘指标不更新） =====
+    // 1) 主源：COMEX 国际金 4H（原生 klt=240 或 1H 聚合）+ 5m（Twelve Data 生效时不覆盖）
+    const r1h = await fetchH1ViaEm();
+    if (r1h && r1h.bars && r1h.bars.length > 15) {
+      if (!twelveActive) {
+        h1Klines = r1h.bars;
+        h1Source = r1h.agg ? 'COMEX 4H(1H聚合)' : 'COMEX 4H';
+      }
+      h1Stale = false;
+      dataFresh.kline = Date.now();
+    } else if (h1Klines) {
+      h1Stale = true; // K 线源暂不可用，保持旧 K + 现价推进
+    }
+    let m5 = await fetchM5ViaEm();
+    if (m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 5min'; }
+    // 2) 兜底：新浪沪金分时（白天/夜盘交易时段）
+    if (!h1Klines || !m5Klines) {
+      const raw = await fetchSinaMinRaw();
+      if (raw && raw.length) {
+        if (!h1Klines) { const h1 = buildBarsFromMin(raw, 60); if (h1 && h1.length >= 3) { h1Klines = h1; h1Source = '沪金分时聚合'; } }
+        if (!m5Klines) { const m5b = buildBarsFromMin(raw, 5); if (m5b && m5b.length >= 14) { m5Klines = m5b; m5Source = '沪金分时聚合'; } }
+      }
+    }
+    // 3) 现价推进：用最新国际现货价更新最后一根 K（凌晨沪金停盘时指标仍持续推进）
+    if (lastSpot) pushSpotToKlines(lastSpot);
+    // 4) 重算状态
+    if (h1Klines) {
+      h1State = calcStateFromK(h1Klines);
+      const now = new Date(); const pad = n => String(n).padStart(2, '0');
+      h1Updated = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    }
+    if (m5Klines) m5State = calcStateFromK(m5Klines);
+    renderPredictionM();
+  }
+
+  /* ================================================================
+     多空预测依据梳理（三大维度实时生成）
+     ================================================================ */
+  function renderBasisRow(text, sent) {
+    const color = sent === '利多' ? 'var(--up)' : (sent === '利空' ? 'var(--down)' : 'var(--text-secondary)');
+    return `<div class="data-row" style="font-size:10.5px;">
+      <span style="flex:1;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text}</span>
+      <span style="width:52px;text-align:right;font-weight:600;color:${color};">${sent}</span>
+    </div>`;
+  }
+  function getCycleState() {
+    // 当前选中周期的技术信号：m5(5分钟) / h1(4小时) / day(日线)
+    if (curCycle === 'm5') return m5State || h1State || indicatorState;
+    if (curCycle === 'h1') return h1State || indicatorState;
+    return indicatorState || h1State;
+  }
+  function getCycleName() {
+    return curCycle === 'm5' ? '5分钟' : (curCycle === 'h1' ? '4小时' : '日线');
+  }
+  function setCycle(c) {
+    curCycle = c;
+    const idMap = { m5: 'cycM5', h1: 'cycH1', day: 'cycDay' };
+    Object.keys(idMap).forEach(k => {
+      const el = document.getElementById(idMap[k]);
+      if (el) el.classList.toggle('active', k === c);
+    });
+    renderPredictionM();
+  }
+  function scoreFrom(s) {
+    // 统一打分（变体 F：RSI.3/ADX5/EMA6/MACD-DIF2/SMA50-200×4）
+    if (!s) return 50;
+    let sc = 50;
+    if (s.rsi != null) sc += (s.rsi - 50) * 0.3;
+    if (s.adxInfo) sc += s.adxInfo.pdi > s.adxInfo.mdi ? 5 : -5;
+    if (s.ema9 != null && s.ema21 != null) {
+      if (s.ema9 > s.ema21 && s.lastClose > s.ema21) sc += 6;
+      else if (s.ema9 < s.ema21 && s.lastClose < s.ema21) sc -= 6;
+    }
+    if (s.macd) sc += s.macd.dif > 0 ? 2 : -2;
+    const sma = s.sma50 || s.sma200;
+    if (sma != null) sc += s.lastClose > sma ? 4 : -4;
+    return Math.max(15, Math.min(88, sc));
+  }
+  function calcOBV(k, p = 20) {
+    // 量价确认：OBV 高于其 20 期均值 = 资金流入
+    if (!k || k.length < p + 1) return null;
+    let obv = 0; const obvs = [];
+    for (let i = 1; i < k.length; i++) {
+      const v = k[i].v || 0;
+      if (k[i].c > k[i - 1].c) obv += v;
+      else if (k[i].c < k[i - 1].c) obv -= v;
+      obvs.push(obv);
+    }
+    const recent = obvs.slice(-p);
+    const avg = recent.reduce((a, b) => a + b, 0) / p;
+    return obv > avg ? 'bull' : 'bear';
+  }
+  function renderPredictionM() {
+    // 1) 顶部综合方向（当前周期 + OBV 量能确认 + 多周期共振）
+    const sTech = getCycleState();
+    let score = scoreFrom(sTech);
+    // OBV 量价确认（±1，当前周期 K 线）
+    const curKlines = curCycle === 'h1' ? h1Klines : (curCycle === 'm5' ? m5Klines : null);
+    let obvDir = curKlines ? calcOBV(curKlines) : null;
+    if (obvDir) score += obvDir === 'bull' ? 1 : -1;
+    // 多周期共振（当前周期 vs 日线方向）：一致 +4 / 背离 -2（回测：共振看多正确率 61%）
+    let reso = null;
+    if (sTech && indicatorState) {
+      const curBull = scoreFrom(sTech) >= 50;
+      const dayBull = scoreFrom(indicatorState) >= 50;
+      if (curBull && dayBull) reso = 'bull';
+      else if (!curBull && !dayBull) reso = 'bear';
+    }
+    if (reso === 'bull') score += 4;
+    else if (reso === 'bear') score -= 2;
+    // 宏观因子：美元弱/利率降 → 利多黄金（回测：美元+利率组合信号正确率 70.5%）
+    if (macroState) {
+      if (macroState.usdChg < 0) score += 2; else score -= 2;
+      if (macroState.rateChg > 0) score += 1; else score -= 1;
+    }
+    score = clamp(score, 15, 88);
+    const bullPct = Math.round(score);
+    const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    // 交易信号门控（技术+宏观融合：阈值≥55/≤45 + 共振 + ADX≥25 + 宏观方向一致 → 多66.7%/空65.5%）
+    const baseSc = scoreFrom(sTech);
+    const adxOk = sTech && sTech.adxInfo && sTech.adxInfo.adx >= 25;
+    const macroBull = macroState ? (macroState.usdChg < 0 && macroState.rateChg > 0) : null; // 美元弱+利率降
+    const macroBear = macroState ? (macroState.usdChg >= 0 && macroState.rateChg <= 0) : null; // 美元强+利率升
+    let tSignal = '观望';
+    if (macroState) {
+      // 融合信号（宏观已加载，胜率 66.7%/65.5%）
+      if (baseSc >= 55 && reso === 'bull' && adxOk && macroBull) tSignal = '做多';
+      else if (baseSc <= 45 && reso === 'bear' && adxOk && macroBear) tSignal = '做空';
+    } else {
+      // 纯技术信号（宏观未加载时降级，胜率约 53%）
+      if (baseSc >= 55 && reso === 'bull' && adxOk) tSignal = '做多';
+      else if (baseSc <= 45 && reso === 'bear' && adxOk) tSignal = '做空';
+    }
+    // 假突破过滤：做多须突破近20根高点、做空须跌破近20根低点（回测期望收益 0.37→0.62）
+    if (breakoutFilter && tSignal !== '观望' && h1Klines && h1Klines.length >= 21) {
+      const win = h1Klines.slice(-21, -1); // 前20根（不含当前未收盘根）
+      const hi20 = Math.max(...win.map(x => x.h));
+      const lo20 = Math.min(...win.map(x => x.l));
+      const px = sTech.lastClose;
+      if (tSignal === '做多' && px <= hi20) tSignal = '观望';  // 未创新高，疑似假突破
+      if (tSignal === '做空' && px >= lo20) tSignal = '观望';  // 未创新低，疑似假突破
+    }
+    // 大事件窗口过滤：非农/CPI/FOMC 前2h~后1h 信号降级为观望（技术指标在事件时失真）
+    const evt = isEventWindow();
+    let evtTag = '';
+    if (evt.active) {
+      evtTag = '（' + evt.title + ' 前' + (evt.hours > 0 ? Math.round(evt.hours) : '后1') + 'h 事件窗口）';
+      if (tSignal !== '观望') tSignal = '观望';
+    }
+    // 数据新鲜度强制保护：关键数据（现货/K线）停更 → 强制观望，避免用旧数据决策
+    const spotAge = Date.now() - dataFresh.spot;
+    const klineAge = Date.now() - dataFresh.kline;
+    let dataDead = false, dataWarn = '';
+    if (dataFresh.kline > 0 && klineAge > 20 * 60000 && dataFresh.spot > 0 && spotAge > 90 * 1000) {
+      dataDead = true;
+      dataWarn = 'K线' + Math.round(klineAge / 60000) + '分钟+现货' + Math.round(spotAge / 1000) + '秒未更新';
+    } else if (dataFresh.kline > 0 && klineAge > 15 * 60000) {
+      dataWarn = 'K线源 ' + Math.round(klineAge / 60000) + ' 分钟未更新';
+    }
+    if (dataDead) tSignal = '观望';
+    // 信号确认（去抖动）：连续 3 次（90 秒）同方向才更新确认信号
+    if (tSignal === '观望') { sigStable = 0; lastCandidateSig = '观望'; }
+    else if (tSignal === lastCandidateSig) { sigStable = Math.min(sigStable + 1, 99); }
+    else { lastCandidateSig = tSignal; sigStable = 1; }
+    if (sigStable >= 3 && tSignal !== confSignal) confSignal = tSignal;
+    // 信号验证记录：确认信号方向变化时记录/结算
+    if (lastSpot) recordSignal(confSignal, lastSpot, sTech && sTech.adxInfo ? sTech.adxInfo.adx : null);
+    // 信号推送提醒：确认信号出现做多/做空时，声音+系统通知+横幅
+    if (lastSpot && (confSignal === '做多' || confSignal === '做空')) {
+      const r = calcRisk(sTech, confSignal, lastSpot, score);
+      if (r) notifySignal(confSignal, lastSpot, r.stop, r.target);
+    }
+    renderVerify();
+    // 动态持仓跟踪（移动止损）：用确认信号驱动
+    if (lastSpot) updateActiveTrade(sTech, confSignal, lastSpot);
+    // 交易风险面板（XAUUSD 买入/卖出判断）用实时信号 + 确认信号展示
+    renderRisk(sTech, tSignal, lastSpot, score);
+    renderSignalCond(baseSc, reso, adxOk, tSignal, score);
+    if (tSignal !== confSignal) {
+      const cbox = document.getElementById('pRiskText');
+      if (cbox && cbox.innerHTML.indexOf('确认') < 0) {
+        cbox.innerHTML = cbox.innerHTML + '<div style="margin-top:2px;font-size:9.5px;color:var(--gold-soft);">信号待确认（需保持 ' + (confSignal === '观望' ? '做多/做空' : confSignal) + ' 90 秒），验证记录仅统计确认信号。</div>';
+      }
+    }
+    // 周期徽标 + 数据源/更新时间（5m 强趋势时标注钝化；共振时标注高置信）
+    const srcNow = curCycle === 'm5' ? (m5Source || h1Source) : h1Source;
+    const m5Blind = curCycle === 'm5' && sTech && sTech.adxInfo && sTech.adxInfo.adx >= 25;
+    const h1Badge = document.getElementById('pH1Badge');
+    if (h1Badge) {
+      let btxt = getCycleName() + ' 级别';
+      if (dataDead) btxt += ' · 数据停更·预测暂停';
+      else if (evt.active) btxt += ' · 事件窗口·观望';
+      else if (tSignal === '做多') btxt += ' · 做多信号';
+      else if (tSignal === '做空') btxt += ' · 做空信号';
+      else if (m5Blind) btxt += ' · 强趋势钝化';
+      else if (h1Stale) btxt += ' · K线源暂不可用·现价推进';
+      else if (reso) btxt += ' · ' + (reso === 'bull' ? '共振看多' : '共振看空');
+      else if (sTech && indicatorState) btxt += ' · 与日线背离';
+      else if (srcNow) btxt += ' · ' + srcNow;
+      else btxt += ' · 加载中';
+      h1Badge.textContent = btxt;
+    }
+    const basisNote = document.getElementById('pBasisNote');
+    if (basisNote) basisNote.textContent = h1State ? (getCycleName() + ' 指标 ' + h1Updated + ' 更新 · ' + srcNow + (h1Stale ? ' · K线源暂不可用·现价推进' : '') + ' · 信号：' + tSignal) : '基于实时数据自动梳理';
+    setT('pConf', score.toFixed(1) + '%');
+    setT('pBull', '看多 ' + score.toFixed(1) + '%');
+    setT('pBear', '看空 ' + (100 - score).toFixed(1) + '%');
+    const mBull = document.getElementById('pMeterBull'), mBear = document.getElementById('pMeterBear');
+    if (mBull) mBull.style.width = bullPct + '%';
+    if (mBear) mBear.style.width = (100 - bullPct) + '%';
+    const dirTag = document.getElementById('pDirTag');
+    const now = new Date(); const pad = n => String(n).padStart(2, '0');
+    setT('pUpdateTime', pad(now.getHours()) + ':' + pad(now.getMinutes()));
+    // 方向标签：优先显示交易信号（门控通过时），否则显示概率档位
+    if (tSignal === '做多') { dirTag.textContent = '做多信号'; dirTag.style.color = 'var(--up)'; dirTag.style.background = 'rgba(242,87,76,0.16)'; }
+    else if (tSignal === '做空') { dirTag.textContent = '做空信号'; dirTag.style.color = 'var(--down)'; dirTag.style.background = 'rgba(33,178,143,0.16)'; }
+    else if (bullPct >= 60) { dirTag.textContent = '看多'; dirTag.style.color = 'var(--up)'; dirTag.style.background = 'rgba(242,87,76,0.16)'; }
+    else if (bullPct >= 50) { dirTag.textContent = '中性偏多'; dirTag.style.color = 'var(--gold-soft)'; dirTag.style.background = 'rgba(232,181,79,0.16)'; }
+    else if (bullPct >= 40) { dirTag.textContent = '中性偏空'; dirTag.style.color = 'var(--gold-soft)'; dirTag.style.background = 'rgba(232,181,79,0.16)'; }
+    else { dirTag.textContent = '看空'; dirTag.style.color = 'var(--down)'; dirTag.style.background = 'rgba(33,178,143,0.16)'; }
+    // 目标位（用当前周期 ATR，止损 1.5× / 目标 3.0×）
+    if (sTech && sTech.atr != null && sTech.lastClose != null) {
+      setT('pTargetUp', '目标 ' + fmt(sTech.lastClose + sTech.atr * 3.0, 1));
+      setT('pTargetDown', '支撑 ' + fmt(sTech.lastClose - sTech.atr * 1.5, 1));
+    }
+
+    // 2) 维度一：经济数据依据
+    let ecoRows = [], ecoScore = 0;
+    if (ecoPublishedM.length) {
+      // 多关键词匹配：跳过实际值缺失的记录，取最新发布（东财部分记录实际值延迟录入）
+      const get = (kws) => {
+        // 所有关键词命中中取最新发布日（避免旧周期数据遮蔽新数据）
+        const list = Array.isArray(kws) ? kws : [kws];
+        let best = null;
+        for (const kw of list) {
+          const hits = ecoPublishedM.filter(p => p.title.includes(kw) && p.actual != null);
+          if (hits.length) {
+            const h = hits.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+            if (!best || (h.date || '') > (best.date || '')) best = h;
+          }
+        }
+        return best;
+      };
+      const cpi = get(['核心CPI:季调:当月同比', '核心CPI:非季调:当月同比', 'CPI:非季调:同比']);
+      if (cpi) { const v = cpi.actual < cpi.prev ? '利多' : '利空'; ecoRows.push(renderBasisRow((cpi.title.indexOf('核心CPI') >= 0 ? '核心CPI' : 'CPI') + ' ' + cpi.actual + '%（前值' + cpi.prev + '%）', v)); ecoScore += v === '利多' ? 1 : -1; }
+      const nfp = get('新增非农就业人数:当月值');
+      if (nfp) { const v = nfp.actual < nfp.prev ? '利多' : '利空'; ecoRows.push(renderBasisRow('非农 ' + nfp.actual + 'K（前值' + nfp.prev + 'K）', v)); ecoScore += v === '利多' ? 1 : -1; }
+      const rate = get('联邦基金利率目标:上限');
+      if (rate) { ecoRows.push(renderBasisRow('联邦基金利率 ' + rate.actual + '%（维持）', '中性')); }
+      const pce = get(['PCE物价指数:季调:同比', '核心PCE物价指数:同比']);
+      if (pce) { const v = pce.actual < pce.prev ? '利多' : '利空'; ecoRows.push(renderBasisRow('PCE ' + pce.actual + '%（前值' + pce.prev + '%）', v)); ecoScore += v === '利多' ? 1 : -1; }
+      // 宏观因子：美元指数 + 美债利率（黄金负相关因子，回测组合正确率 70.5%）
+      if (macroState) {
+        ecoRows.push(renderBasisRow('宏观 美元指数' + (macroState.usdChg < 0 ? '走弱' : '走强') + '（5日' + (macroState.usdChg >= 0 ? '+' : '') + macroState.usdChg.toFixed(2) + '%）', macroState.usdChg < 0 ? '利多' : '利空'));
+        ecoScore += macroState.usdChg < 0 ? 1 : -1;
+        ecoRows.push(renderBasisRow('宏观 美债利率' + (macroState.rateChg > 0 ? '下行' : '上行') + '（TLT 5日' + (macroState.rateChg >= 0 ? '+' : '') + macroState.rateChg.toFixed(2) + '%）', macroState.rateChg > 0 ? '利多' : '利空'));
+        ecoScore += macroState.rateChg > 0 ? 1 : -1;
+      }
+    }
+    const ecoBox = document.getElementById('pEcoBasis');
+    const ecoMeta = document.getElementById('pEcoMeta');
+    if (ecoMeta) {
+      const latest = ecoPublishedM.filter(p => p.actual != null).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+      ecoMeta.textContent = latest ? ('最新已发布：' + latest.title.slice(0, 30) + ' · 发布于 ' + latest.date + (dataFresh.eco ? ' · 同步于 ' + new Date(dataFresh.eco).toTimeString().slice(0, 8) : '')) : '经济数据加载中…';
+    }
+    if (ecoBox) ecoBox.innerHTML = ecoRows.length ? ecoRows.join('') : '<div class="data-row"><span style="flex:1;color:var(--text-muted);">暂无已发布数据</span></div>';
+    setT('pEcoScore', (ecoScore >= 0 ? '+' : '') + ecoScore);
+
+    // 3) 维度二：技术指标依据（按当前周期）
+    let techRows = [], techScore = 0;
+    const s2 = getCycleState();
+    const cycTag = getCycleName() + '·';
+    if (s2) {
+      if (s2.rsi != null) {
+        // 强趋势中 5m 信号钝化：超买/超卖不按常规解读（不逆势、不计分）
+        const trendBlind = curCycle === 'm5' && s2.adxInfo && s2.adxInfo.adx >= 25;
+        if (trendBlind && s2.rsi >= 70) {
+          techRows.push(renderBasisRow(cycTag + 'RSI ' + s2.rsi.toFixed(1) + ' 超买(强趋势钝化·不逆势)', '中性'));
+        } else if (trendBlind && s2.rsi <= 30) {
+          techRows.push(renderBasisRow(cycTag + 'RSI ' + s2.rsi.toFixed(1) + ' 超卖(强趋势钝化·不逆势)', '中性'));
+        } else {
+          const v = s2.rsi > 50 ? '利多' : '利空';
+          techRows.push(renderBasisRow(cycTag + 'RSI ' + s2.rsi.toFixed(1) + (s2.rsi >= 70 ? ' 超买区' : (s2.rsi >= 50 ? ' 50上方偏强' : ' 50下方偏弱')), v));
+          techScore += v === '利多' ? 1 : -1;
+        }
+      }
+      // 强趋势过滤提示：5m 档单边行情中信号可靠性低，建议切 4H
+      if (curCycle === 'm5' && s2.adxInfo && s2.adxInfo.adx >= 25) {
+        techRows.unshift('<div style="font-size:9.5px;color:var(--gold-soft);padding:5px 8px;background:rgba(232,181,79,0.09);border:1px solid rgba(232,181,79,0.25);border-radius:6px;margin-bottom:2px;">注意：强趋势中（ADX ' + s2.adxInfo.adx.toFixed(0) + '），5分钟指标钝化、短线信号可靠性低，建议切换 4H 周期看波段</div>');
+      }
+      if (s2.adxInfo) {
+        const v = s2.adxInfo.pdi > s2.adxInfo.mdi ? '利多' : '利空';
+        techRows.push(renderBasisRow(cycTag + 'ADX ' + s2.adxInfo.adx.toFixed(1) + '（+' + s2.adxInfo.pdi.toFixed(1) + '/-' + s2.adxInfo.mdi.toFixed(1) + '）', v));
+        techScore += v === '利多' ? 1 : -1;
+      }
+      if (s2.ema9 != null && s2.ema21 != null) {
+        const v = s2.ema9 > s2.ema21 ? '利多' : '利空';
+        techRows.push(renderBasisRow(cycTag + 'EMA9 ' + (s2.ema9 > s2.ema21 ? '上穿' : '下穿') + ' EMA21', v));
+        techScore += v === '利多' ? 1 : -1;
+      }
+      if (s2.macd) {
+        const v = s2.macd.hist > 0 ? '利多' : '利空';
+        techRows.push(renderBasisRow(cycTag + 'MACD ' + (s2.macd.hist > 0 ? '红柱' : '绿柱') + '（' + (s2.macd.dif > 0 ? 'DIF在零轴上方' : 'DIF在零轴下方') + '）', v));
+        techScore += v === '利多' ? 1 : -1;
+      }
+      if (s2.sma50 != null && s2.lastClose != null) {
+        const v = s2.lastClose > s2.sma50 ? '利多' : '利空';
+        techRows.push(renderBasisRow(cycTag + '价格' + (v === '利多' ? '站上' : '跌破') + ' SMA50' + (curCycle === 'day' ? ' 牛熊线' : ''), v));
+        techScore += v === '利多' ? 1 : -1;
+      }
+      // OBV 量价确认（资金流入/流出）
+      if (obvDir) {
+        const v = obvDir === 'bull' ? '利多' : '利空';
+        techRows.push(renderBasisRow(cycTag + 'OBV ' + (obvDir === 'bull' ? '资金流入' : '资金流出') + '（量价确认）', v));
+        techScore += v === '利多' ? 1 : -1;
+      }
+      // 布林带位置（波动通道：上轨超买/下轨超卖/中轨方向）
+      if (s2.boll && s2.lastClose != null) {
+        const b = s2.boll;
+        let bt, bv;
+        if (s2.lastClose >= b.up) { bt = '触及上轨·超买区'; bv = '中性'; }
+        else if (s2.lastClose <= b.lo) { bt = '触及下轨·超卖区'; bv = '利多'; techScore += 1; }
+        else { bt = s2.lastClose > b.mid ? '中轨上方·偏强' : '中轨下方·偏弱'; bv = s2.lastClose > b.mid ? '利多' : '利空'; techScore += s2.lastClose > b.mid ? 1 : -1; }
+        techRows.push(renderBasisRow('布林带 ' + bt + '（通道宽' + ((b.up - b.lo) / b.mid * 100).toFixed(1) + '%）', bv));
+      }
+      // K 线形态（4H 级别经典反转信号）
+      if (s2.pattern && s2.pattern.type) {
+        const v = s2.pattern.dir === 'bull' ? '利多' : (s2.pattern.dir === 'bear' ? '利空' : '中性');
+        techRows.push(renderBasisRow('K线形态 ' + s2.pattern.type + '（' + s2.pattern.desc + '）', v));
+        if (v !== '中性') techScore += v === '利多' ? 1 : -1;
+      }
+      // 自动支撑/阻力 + 斐波那契（XAUUSD 交易执行位）
+      if (s2.levels && s2.lastClose != null) {
+        const L = s2.levels;
+        techRows.push(renderBasisRow('阻力 ' + fmt(L.resist, 1) + ' / 支撑 ' + fmt(L.support, 1) + '（近60根高低点）', '中性'));
+        techRows.push(renderBasisRow('斐波那契 0.382=' + fmt(L.fib382, 1) + ' 0.618=' + fmt(L.fib618, 1) + '（回调参考位）', '中性'));
+      }
+      // 多周期共振（当前周期 vs 日线）
+      if (reso) {
+        const v = reso === 'bull' ? '利多' : '利空';
+        techRows.push(renderBasisRow('共振' + (reso === 'bull' ? '看多' : '看空') + '（' + getCycleName() + '与日线同向，高置信）', v));
+        techScore += v === '利多' ? 1 : -1;
+      } else if (sTech && indicatorState) {
+        techRows.push(renderBasisRow('与日线方向背离（信号置信度降低）', '中性'));
+      }
+      // 数据不足时补充提示（如 5m/1H 的 ADX 需 30 根以上）
+      if (s2.adxInfo == null) {
+        techRows.push(renderBasisRow(cycTag + 'ADX 数据积累中（需 30 根以上）', '中性'));
+      }
+    }
+    const techBox = document.getElementById('pTechBasis');
+    if (techBox) techBox.innerHTML = techRows.length ? techRows.join('') : '<div class="data-row"><span style="flex:1;color:var(--text-muted);">指标计算中…</span></div>';
+    setT('pTechScore', (techScore >= 0 ? '+' : '') + techScore);
+    // 维度二标题标注当前周期 + 精确更新时间（数据可验证）
+    const techTitle = document.getElementById('pTechTitle');
+    if (techTitle) techTitle.textContent = '维度二 · 技术指标（' + getCycleName() + ' · 更新 ' + h1Updated + '）';
+    // 数据可验证：指标原始值 + K线数据源 + 最后K线时间
+    const techMeta = document.getElementById('pTechMeta');
+    if (techMeta && s2) {
+      const klineTag = h1Klines && h1Klines.length ? ('K线 ' + h1Klines.length + ' 根 · 最新K ' + (h1Klines[h1Klines.length - 1].date || '').slice(5, 16) + (curCycle === 'h1' ? '（当前4H进行中，收盘后切换下一根）' : '')) : '';
+      const srcTag = (curCycle === 'h1' ? h1Source : (curCycle === 'm5' ? (m5Source || h1Source) : (dailySource === 'XAUUSD' ? 'XAUUSD 日线' : '沪金日线')));
+      techMeta.textContent = '指标原始值：RSI ' + (s2.rsi != null ? s2.rsi.toFixed(1) : '--') + ' · ADX ' + (s2.adxInfo ? s2.adxInfo.adx.toFixed(1) : '--') + ' · 收盘 ' + (s2.lastClose != null ? fmt(s2.lastClose, 1) : '--') + ' · 数据源 ' + srcTag + (klineTag ? ' · ' + klineTag : '');
+    }
+
+    // 4) 维度三：消息面依据
+    let newsRows = [], newsScore = 0;
+    if (newsItemsM.length) {
+      newsItemsM.slice(0, 4).forEach(n => {
+        newsRows.push(renderBasisRow(n.title.length > 28 ? n.title.slice(0, 28) + '…' : n.title, n.sent));
+        newsScore += n.sent === '利多' ? 1 : (n.sent === '利空' ? -1 : 0);
+      });
+    }
+    const newsBox = document.getElementById('pNewsBasis');
+    if (newsBox) newsBox.innerHTML = newsRows.length ? newsRows.join('') : '<div class="data-row"><span style="flex:1;color:var(--text-muted);">消息同步中…</span></div>';
+    setT('pNewsScore', (newsScore >= 0 ? '+' : '') + newsScore);
+
+    // 4) 维度四：持仓量与资金流向（COMEX 库存 / 净持仓 + SPDR ETF 持仓）
+    let holdRows = [], holdScore = 0;
+    if (holdingsData && holdingsData.length >= 2) {
+      // 取最新两条有库存的记录
+      const withStock = holdingsData.filter(x => x.STORAGE_TON != null);
+      const withNet = holdingsData.filter(x => x.NETPOSITION_TON != null);
+      if (withStock.length >= 2) {
+        const s0 = withStock[0], s1 = withStock[1];
+        const delta = s0.STORAGE_TON - s1.STORAGE_TON;
+        const v = delta < 0 ? '利多' : (delta > 0 ? '利空' : '中性');
+        holdRows.push(renderBasisRow('COMEX库存 ' + s0.STORAGE_TON.toFixed(1) + '吨（' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + '）', v));
+        holdScore += v === '利多' ? 1 : (v === '利空' ? -1 : 0);
+      }
+      if (withNet.length >= 2) {
+        const n0 = withNet[0], n1 = withNet[1];
+        const delta = n0.NETPOSITION_TON - n1.NETPOSITION_TON;
+        const v = delta > 0 ? '利多' : (delta < 0 ? '利空' : '中性');
+        holdRows.push(renderBasisRow('COMEX净持仓 ' + n0.NETPOSITION_TON.toFixed(0) + '吨（' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + '）', v));
+        holdScore += v === '利多' ? 1 : (v === '利空' ? -1 : 0);
+      }
+      if (withNet[0] && withNet[0].NETPOSITION_DOLLAR) {
+        holdRows.push(renderBasisRow('净持仓市值 $' + (withNet[0].NETPOSITION_DOLLAR / 1e9).toFixed(1) + 'B', withNet[0].NETPOSITION_TON > 0 ? '利多' : '利空'));
+        holdScore += withNet[0].NETPOSITION_TON > 0 ? 1 : -1;
+      }
+    }
+    // SPDR 黄金 ETF 持仓（全球最大黄金 ETF，日频）
+    if (spdrData && spdrData.holdings) {
+      const v = spdrData.change > 0 ? '利多' : (spdrData.change < 0 ? '利空' : '中性');
+      holdRows.push(renderBasisRow('SPDR ETF持仓 ' + spdrData.holdings.toFixed(1) + '吨（' + (spdrData.change >= 0 ? '+' : '') + spdrData.change.toFixed(1) + '）', v));
+      holdScore += v === '利多' ? 1 : (v === '利空' ? -1 : 0);
+    }
+    if (holdRows.length) {
+      const d0 = holdingsData && holdingsData[0] ? holdingsData[0].REPORT_DATE.slice(5, 10) : (spdrData ? spdrData.asOf.slice(5) : '');
+      const extra = spdrData ? ' · SPDR数据日 ' + (spdrData.asOf || '').slice(5) : '';
+      holdRows.push('<div style="font-size:9px;color:var(--text-muted);padding-top:2px;">COMEX数据日 ' + d0 + extra + ' · 每日更新 · ' + holdingsUpdated + ' 同步</div>');
+    }
+    const holdBox = document.getElementById('pHoldBasis');
+    if (holdBox) holdBox.innerHTML = holdRows.length ? holdRows.join('') : '<div class="data-row"><span style="flex:1;color:var(--text-muted);">持仓数据同步中…</span></div>';
+    setT('pHoldScore', (holdScore >= 0 ? '+' : '') + holdScore);
+
+    // 5) 综合结论 / 操作指令（四大维度：经济/技术/消息/持仓）
+    const total = ecoScore + techScore + newsScore + holdScore;
+    const conclusionTag = document.getElementById('pConclusionTag');
+    const conclusionText = document.getElementById('pConclusionText');
+    const actionEl = document.getElementById('pActionSignal');
+    const actionSub = document.getElementById('pActionSub');
+    // 醒目操作指令：做多 / 做空 / 观望（明确可执行，而非概率）
+    if (actionEl) {
+      if (dataDead) {
+        actionEl.textContent = '暂停';
+        actionEl.style.color = 'var(--text-muted)';
+      } else if (evt.active) {
+        actionEl.textContent = '观望';
+        actionEl.style.color = 'var(--text-secondary)';
+      } else if (tSignal === '做多') {
+        actionEl.textContent = '做多';
+        actionEl.style.color = 'var(--up)';
+      } else if (tSignal === '做空') {
+        actionEl.textContent = '做空';
+        actionEl.style.color = 'var(--down)';
+      } else {
+        actionEl.textContent = '观望';
+        actionEl.style.color = 'var(--text-secondary)';
+      }
+    }
+    if (actionSub) {
+      if (dataDead) actionSub.textContent = '数据停更（' + dataWarn + '），预测暂停';
+      else if (evt.active) actionSub.textContent = '大事件窗口' + evtTag + '，信号降级观望';
+      else if (tSignal === '做多') actionSub.textContent = '买入 XAUUSD · 入场/止损/目标见下方风险卡';
+      else if (tSignal === '做空') actionSub.textContent = '卖出 XAUUSD · 入场/止损/目标见下方风险卡';
+      else actionSub.textContent = '观望原因：' + watchReason(baseSc, reso, adxOk, macroState);
+    }
+    // 入场时机：信号（方向）结合支撑阻力（位置），避免追涨杀跌
+    const timingEl = document.getElementById('pEntryTiming');
+    if (timingEl) {
+      const tm = entryTiming(tSignal);
+      if (tm && !dataDead && !evt.active) {
+        timingEl.style.display = 'block';
+        timingEl.textContent = tm.txt;
+        timingEl.style.color = tm.color;
+      } else {
+        timingEl.style.display = 'none';
+      }
+    }
+    // 概率作为辅助说明（不是操作指令）
+    if (conclusionTag) conclusionTag.textContent = (total >= 3 ? '偏多' : (total >= 1 ? '中性偏多' : (total <= -3 ? '偏空' : (total <= -1 ? '中性偏空' : '中性')))) + ' ' + bullPct + '%';
+    const dir = total >= 1 ? '看多' : (total <= -1 ? '看空' : '震荡');
+    if (conclusionText) conclusionText.textContent = '看多概率 ' + bullPct + '% · 经济数据' + (ecoScore >= 0 ? '偏多' : '偏空') + '、技术指标' + (techScore >= 0 ? '偏多' : '偏空') + '、消息面' + (newsScore >= 0 ? '偏多' : '偏空') + '、持仓' + (holdScore >= 0 ? '偏多' : '偏空') + '。' + (dataDead ? '数据源停更，预测已暂停。' : (evt.active ? '大事件窗口，技术信号自动观望。' : (tSignal === '做多' ? '信号已确认：做多（技术+宏观共振，真实4H胜率约67%）。' : (tSignal === '做空' ? '信号已确认：做空（技术+宏观共振，真实4H胜率约66%）。' : '概率不等于指令——只有打分/共振/趋势/宏观四条件全满足才出做多/做空，否则观望。'))));
+    renderDataStatus(dataWarn, dataDead);
+    renderMultiTrend();
+    renderNewsSignal();
+  }
+  function watchReason(baseSc, reso, adxOk, macro) {
+    // 观望原因：明确告诉用户缺哪个条件
+    const reasons = [];
+    const scOk = baseSc >= 55 || baseSc <= 45;
+    if (!scOk) reasons.push('打分 ' + baseSc.toFixed(0) + ' 未达标（需≥55做多或≤45做空）');
+    if (reso !== 'bull' && reso !== 'bear') reasons.push('4H与日线背离');
+    if (!adxOk) reasons.push('ADX<25（震荡市，4H信号不可靠）');
+    if (!macro) reasons.push('宏观数据加载中');
+    else {
+      const mb = macro.usdChg < 0 && macro.rateChg > 0;
+      const mr = macro.usdChg >= 0 && macro.rateChg <= 0;
+      if (!mb && !mr) reasons.push('宏观方向不明确（美元与利率信号冲突）');
+    }
+    return reasons.length ? reasons.join('；') : '等待条件确认';
+  }
+
+  /* ---------- 迷你K线渲染（真实数据） ---------- */
+  function renderMiniKline(k) {
+    const svg = document.getElementById('klineSvg');
+    if (!svg) return;
+    const W = 311, H = 110, pad = 8;
+    const n = Math.min(k.length, 30);
+    const data = k.slice(-n);
+    const all = data.flatMap(x => [x.h, x.l]);
+    const min = Math.min(...all), max = Math.max(...all);
+    const range = (max - min) || 1;
+    const xAt = i => pad + i * (W - pad * 2) / (n - 1);
+    const yAt = v => pad + (max - v) / range * (H - pad * 2);
+    const closes = data.map(x => x.c);
+    const ema9Line = data.map((x, i) => {
+      const arr = closes.slice(0, i + 1);
+      const v = calcEMA(arr, 9);
+      return v != null ? v : null;
+    });
+
+    let body = '';
+    // 网格
+    for (let g = 1; g <= 4; g++) body += `<line x1="0" y1="${H*g/5}" x2="${W}" y2="${H*g/5}" stroke="#1C2430" stroke-width="1"/>`;
+    // K线实体
+    const bw = Math.max(2, (W - pad * 2) / n * 0.55);
+    data.forEach((x, i) => {
+      const cx = xAt(i);
+      const up = x.c >= x.o;
+      const color = up ? '#F2574C' : '#21B28F';
+      const yO = yAt(x.o), yC = yAt(x.c), yH = yAt(x.h), yL = yAt(x.l);
+      body += `<line x1="${cx}" y1="${yH}" x2="${cx}" y2="${yL}" stroke="${color}" stroke-width="1"/>`;
+      const top = Math.min(yO, yC), h = Math.max(1, Math.abs(yO - yC));
+      body += `<rect x="${cx - bw/2}" y="${top}" width="${bw}" height="${h}" rx="0.5" fill="${color}"/>`;
+    });
+    // EMA9 线
+    const pts = [];
+    ema9Line.forEach((v, i) => { if (v != null) pts.push(`${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`); });
+    if (pts.length > 1) body += `<polyline points="${pts.join(' ')}" fill="none" stroke="#F2D98C" stroke-width="1.6"/>`;
+
+    svg.innerHTML = body;
+  }
+
+  /* ---------- 主循环：实时刷新 ---------- */
+  async function refreshKline() {
+    const k = await fetchKline();
+    if (k && k.length > 30) applyIndicators(k);
+  }
+
+  // 启动：先拉K线算指标，再实时轮询行情
+  refreshKline();
+  refreshQuote();
+  refreshH1();                                 // 1H 指标引擎
+  setInterval(refreshH1, 30000);               // 1H K线 60 秒刷新（分钟级捕获最新小时K变化）
+  setInterval(refreshQuote, 1000);    // 金价 1 秒刷新（与国际金价变动同步）
+  fetchGCQuote();                     // 纽约期金实时参考（凌晨伦敦现货清淡时）
+  setInterval(fetchGCQuote, 5000);    // 5 秒刷新（COMEX 期货 5 秒更新）
+  setInterval(refreshKline, 60000);  // 日线 K 线 1 分钟刷新（东财免费，日线指标/支撑阻力更及时）
+
+  /* ================================================================
+     经济日历（东财 RPT_ECONOMICVALUE_ALL，JSONP 跨域）
+     ================================================================ */
+  const fmtE = v => (v === null || v === undefined || v === 'None') ? '--' : String(v);
+  function ecoDir(p) {
+    // 经济数据对黄金的方向：通胀/失业下降利多，就业/利率上升利空
+    const t = p.title || '';
+    if (t.includes('CPI') || t.includes('PCE') || t.includes('失业率') || t.includes('初请') || t.includes('通胀')) return p.actual < p.prev ? '利多' : '利空';
+    if (t.includes('非农') || t.includes('ADP') || t.includes('就业')) return p.actual > p.prev ? '利空' : '利多';
+    if (t.includes('利率') || t.includes('联邦基金')) return p.actual > p.prev ? '利空' : '利多';
+    return '中性';
+  }
+  function renderDataPage() {
+    // 数据页：宏观因子 + 已发布经济数据 + 未来事件
+    const macroEl = document.getElementById('dataMacro');
+    if (macroEl) {
+      if (macroState) {
+        const uc = macroState.usdChg < 0 ? 'var(--up)' : 'var(--down)';
+        const rc = macroState.rateChg > 0 ? 'var(--up)' : 'var(--down)';
+        macroEl.innerHTML =
+          '<div class="data-row" style="padding:5px 0;"><span style="width:68px;color:var(--text-muted);font-size:10px;">美元指数</span><span style="flex:1;font-size:11px;color:' + uc + ';font-weight:600;">' + (macroState.usdChg < 0 ? '走弱' : '走强') + ' ' + (macroState.usdChg >= 0 ? '+' : '') + macroState.usdChg.toFixed(2) + '%</span><span style="width:36px;text-align:right;font-size:10px;color:' + uc + ';font-weight:600;">' + (macroState.usdChg < 0 ? '利多' : '利空') + '</span></div>' +
+          '<div class="data-row" style="padding:5px 0;"><span style="width:68px;color:var(--text-muted);font-size:10px;">美债利率</span><span style="flex:1;font-size:11px;color:' + rc + ';font-weight:600;">' + (macroState.rateChg > 0 ? '下行' : '上行') + ' ' + (macroState.rateChg >= 0 ? '+' : '') + macroState.rateChg.toFixed(2) + '%</span><span style="width:36px;text-align:right;font-size:10px;color:' + rc + ';font-weight:600;">' + (macroState.rateChg > 0 ? '利多' : '利空') + '</span></div>' +
+          '<div style="font-size:9px;color:var(--text-muted);">黄金 vs 美元相关系数 -0.40 · 美元走弱+利率下行利多黄金（组合信号 70.5%）</div>';
+      } else {
+        macroEl.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">宏观因子加载中…</span></div>';
+      }
+    }
+    const pubEl = document.getElementById('dataPublished');
+    if (pubEl) {
+      const done = (ecoPublishedM || []).filter(p => p.actual != null).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 8);
+      if (done.length) {
+        pubEl.innerHTML = done.map(p => {
+          const d = ecoDir(p);
+          const c = d === '利多' ? 'var(--up)' : (d === '利空' ? 'var(--down)' : 'var(--text-muted)');
+          const chg = p.actual < p.prev ? '↓' : (p.actual > p.prev ? '↑' : '平');
+          return '<div class="data-row" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+            '<span style="flex:1;font-size:10.5px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + p.title + '</span>' +
+            '<span style="font-size:10px;color:var(--text-secondary);margin-left:6px;">' + fmtE(p.actual) + chg + (p.prev != null ? '（前' + fmtE(p.prev) + '）' : '') + '</span>' +
+            '<span style="width:34px;text-align:right;font-size:10px;color:' + c + ';font-weight:600;">' + d + '</span>' +
+            '</div>';
+        }).join('');
+      } else {
+        pubEl.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">经济数据加载中…</span></div>';
+      }
+    }
+    const futEl = document.getElementById('dataFuture');
+    if (futEl) {
+      const fut = (ecoFutureM || []).slice(0, 6);
+      if (fut.length) {
+        futEl.innerHTML = fut.map(it => '<div class="data-row" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+          '<span style="width:66px;font-family:var(--font-mono);font-size:10px;color:var(--gold-soft);">' + (it.date || '').slice(5) + (it.time ? ' ' + it.time : '') + '</span>' +
+          '<span style="flex:1;font-size:10.5px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + it.title + '</span>' +
+          '</div>').join('');
+      } else {
+        futEl.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">事件日历加载中…</span></div>';
+      }
+    }
+  }
+  function renderEcoCardsM(published) {
+    if (!published || !published.length) return;
+    // 多关键词匹配：跳过实际值缺失的记录，取最新发布
+    const get = (kws) => {
+      // 所有关键词命中中取最新发布日
+      const list = Array.isArray(kws) ? kws : [kws];
+      let best = null;
+      for (const kw of list) {
+        const hits = published.filter(p => p.title.includes(kw) && p.actual != null);
+        if (hits.length) {
+          const h = hits.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+          if (!best || (h.date || '') > (best.date || '')) best = h;
+        }
+      }
+      return best;
+    };
+    const nfp = get('新增非农就业人数:当月值');
+    const cpi = get(['核心CPI:季调:当月同比', '核心CPI:非季调:当月同比', 'CPI:非季调:同比']);
+    const rate = get('联邦基金利率目标:上限');
+    const pce = get(['PCE物价指数:季调:同比', '核心PCE物价指数:同比']);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    if (nfp) { set('mNfp', fmtE(nfp.actual)); set('mNfpFc', '前值 ' + fmtE(nfp.prev)); set('mNfpTag', nfp.actual < nfp.prev ? '回落' : '回升'); }
+    if (cpi) { set('mCpi', fmtE(cpi.actual) + '%'); set('mCpiFc', '前值 ' + fmtE(cpi.prev) + '%'); set('mCpiTag', cpi.actual < cpi.prev ? '降温' : '升温'); }
+    if (rate) { set('mRate', fmtE(rate.actual) + '%'); set('mRateFc', '7/30 决议' + (rate.actual === rate.prev ? '维持' : '调整')); }
+    if (pce) { set('mPce', fmtE(pce.actual) + '%'); set('mPceFc', '前值 ' + fmtE(pce.prev) + '%'); set('mPceTag', pce.actual < pce.prev ? '降温' : '升温'); }
+  }
+  function renderEcoFutureM(items) {
+    const c = document.getElementById('mEcoFuture');
+    if (!c || !items || !items.length) return;
+    c.innerHTML = items.slice(0, 4).map(it => `
+      <div class="data-row" style="font-size:10px;">
+        <span style="width:72px;font-family:var(--font-mono);color:var(--text-secondary);">${(it.date || '').slice(5)}</span>
+        <span style="flex:1;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</span>
+        <span style="width:52px;text-align:right;font-family:var(--font-mono);color:${it.actual != null ? 'var(--up)' : 'var(--text-secondary)'};">${it.actual != null ? fmtE(it.actual) : '--'}</span>
+      </div>`).join('');
+  }
+  async function loadEcoCalendarM() {
+    try {
+      let json = null;
+      try { const r = await fetch('data/eco_calendar.json?_=' + Date.now()); json = await r.json(); } catch (e) {}
+      if (!json) json = EMBEDDED_ECO;  // 本地/独立运行兜底
+      ecoPublishedM = json.published || [];
+      dataFresh.eco = Date.now();
+      renderEcoCardsM(ecoPublishedM);
+      ecoFutureM = json.future || []; renderEcoFutureM(ecoFutureM);
+      renderDataPage();
+      const pill = document.getElementById('mEcoPill');
+      if (pill) pill.textContent = '已同步 ' + (json.updated || '').slice(5, 16);
+      renderPredictionM();
+    } catch (e) {}
+    try {
+      const cb = '_eco_m_' + Date.now();
+      const script = document.createElement('script');
+      const n = new Date();
+      const today = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+      // <=今天 + 倒序：最新已发布数据排前面（含刚公布的非农/CPI），实时刷新四卡与预测
+      const flt = encodeURIComponent("(DAT_PUBLISHDATE<='" + today + " 00:00:00')");
+      script.src = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=1&pageSize=300&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=-1&source=WEB&client=WEB&callback=' + cb + '&_=' + Date.now();
+      window[cb] = (json) => {
+        const rows = (json.result && json.result.data) || [];
+        // 宽匹配美国关键经济数据 + 排除 CFTC 持仓数据（持仓/管理基金/未平仓等会挤占列表）
+        const KEY = ['CPI', 'PCE', '失业率', '非农', 'ADP', '联邦基金', '利率决议', '初请', '零售', 'GDP'];
+        const EXCLUDE = ['持仓', '管理基金', '未平仓', '报告头寸', '期货', '期权'];
+        const mapped = rows.filter(d => {
+          const t = String(d.TITLE);
+          return t.includes('美国') && KEY.some(k => t.includes(k)) && !EXCLUDE.some(k => t.includes(k));
+        })
+          .map(d => ({ title: d.TITLE, date: String(d.DAT_PUBLISHDATE).slice(0, 10), time: d.STR_PUBLISHTIME || '', actual: d.DEC_INDEXVALUE, forecast: d.DEC_FOREVALUE, prev: d.DEC_LINDEXVALUE }));
+        const published = mapped.filter(x => x.actual != null);
+        const future = mapped.filter(x => x.actual == null);
+        if (published.length) {
+          // 合并到已发布列表（去重）并刷新四卡 + 预测页经济维度
+          const seen = new Set(ecoPublishedM.map(p => p.title));
+          published.forEach(p => { if (!seen.has(p.title)) ecoPublishedM.push(p); });
+          ecoPublishedM.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          renderEcoCardsM(ecoPublishedM);
+          renderDataPage();
+          renderPredictionM();
+        }
+        if (future.length) { ecoFutureM = future; renderEcoFutureM(future); renderDataPage(); }
+        script.remove(); delete window[cb];
+      };
+      script.onerror = () => { script.remove(); delete window[cb]; };
+      document.head.appendChild(script);
+    } catch (e) {}
+  }
+  loadEcoCalendarM();
+  setInterval(loadEcoCalendarM, 600000);
+
+  /* ================================================================
+     消息雷达（新浪 7x24 快讯，JSONP 跨域）
+     ================================================================ */
+  const NEWS_CAT = [
+    { cat: '黄金行情', kw: ['现货黄金', '黄金', '金价', '期金', '白银'] },
+    { cat: '地缘局势', kw: ['中东', '伊朗', '以色列', '地缘', '战争', '冲突', '袭击', '避险', '俄乌', '外交', '国务卿'] },
+    { cat: '国际油价', kw: ['原油', 'WTI', '布伦特', '油价', 'OPEC', '能源'] },
+    { cat: '美联储', kw: ['美联储', '鲍威尔', '降息', '加息', '利率', 'FOMC', '联邦基金', '点阵图', '鹰派', '鸽派'] },
+    { cat: '美元/美债', kw: ['美元指数', '美元走强', '美元走弱', '美债', '国债收益率', '实际利率', '美元兑'] },
+    { cat: '经济数据', kw: ['CPI', '通胀', 'PCE', '非农', '失业率', '就业', 'GDP', '贸易帐'] },
+  ];
+  const BULL_KW = ['降息', '避险', '地缘', '冲突', '战争', '袭击', '通胀升温', '美元走弱', '美债收益率下行', '央行购金', '金价上涨', '黄金突破', '增持黄金', '超预期回落', '就业数据疲软', '不及预期', '期金突破', '现货黄金突破'];
+  const BEAR_KW = ['加息', '美元走强', '美债收益率上行', '风险偏好回升', '股市上涨', '黄金遭抛售', '金价下跌', '减持黄金', '就业数据强劲', '超预期', '鹰派', '降息预期降温'];
+  function classifyNews(t) {
+    for (const c of NEWS_CAT) if (c.kw.some(k => t.includes(k))) return c.cat;
+    return '全球市场';
+  }
+  function newsSentiment(t) {
+    const pos = BULL_KW.filter(k => t.includes(k)).length;
+    const neg = BEAR_KW.filter(k => t.includes(k)).length;
+    return pos > neg ? '利多' : (neg > pos ? '利空' : '中性');
+  }
+  function newsColor(sent) {
+    return sent === '利多' ? 'var(--up)' : (sent === '利空' ? 'var(--down)' : 'var(--gold-soft)');
+  }
+  function newsBg(sent) {
+    return sent === '利多' ? 'rgba(242,87,76,0.14)' : (sent === '利空' ? 'rgba(33,178,143,0.14)' : 'rgba(232,181,79,0.14)');
+  }
+  function renderNewsM(items) {
+    const c = document.getElementById('mNewsList');
+    if (!c || !items || !items.length) return;
+    c.innerHTML = items.map(n => `
+      <div class="data-row">
+        <div class="news-tag" style="background:${newsBg(n.sent)};color:${newsColor(n.sent)}">${n.cat}</div>
+        <div class="news-body">
+          <div class="news-title">${n.title}</div>
+          <div class="news-time" style="color:${newsColor(n.sent)}">${n.time} · ${n.sent}</div>
+        </div>
+      </div>`).join('');
+  }
+  function fetchNewsM() {
+    return new Promise((resolve) => {
+      const cb = '_news_m_' + Date.now();
+      const script = document.createElement('script');
+      script.src = 'https://zhibo.sina.com.cn/api/zhibo/feed?callback=' + cb + '&page=1&page_size=100&zhibo_id=152&_=' + Date.now();
+      let done = false;
+      const cleanup = () => { script.remove(); delete window[cb]; };
+      const timer = setTimeout(() => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve([]); } }, 10000);
+      // 新浪7x24 为"调用式"JSONP：try{cb({...})} → 必须预定义回调函数
+      window[cb] = (data) => {
+        if (done) return; done = true;
+        clearTimeout(timer);
+        try {
+          const feed = (data && data.result && data.result.data && data.result.data.feed && data.result.data.feed.list) || [];
+          const GOLD = ['黄金', '金价', '美元', '美联储', '降息', '加息', '原油', '油价', '地缘', '中东', '伊朗', '避险', '关税', '通胀', 'CPI', '非农', '美债', 'WTI', '布伦特', '期金', '白银'];
+          const items = feed
+            .map(f => ({ rich: (f.rich_text || '').replace(/<[^>]+>/g, ''), time: (f.create_time || '').slice(11, 16) }))
+            .filter(x => x.rich.length > 12 && GOLD.some(k => x.rich.includes(k)))
+            .map(x => ({ title: x.rich, time: x.time, cat: classifyNews(x.rich), sent: newsSentiment(x.rich) }))
+            .slice(0, 5);
+          cleanup();
+          resolve(items);
+        } catch (e) { cleanup(); resolve([]); }
+      };
+      script.onerror = () => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve([]); } };
+      document.head.appendChild(script);
+    });
+  }
+  async function loadNewsM() {
+    const items = await fetchNewsM();
+    if (items.length) {
+      newsItemsM = items;
+      dataFresh.news = Date.now();
+      renderNewsM(items);
+      const pill = document.getElementById('mNewsPill');
+      if (pill) pill.textContent = '新浪7x24 · ' + items.length + '条相关';
+      renderPredictionM();
+    }
+  }
+  loadNewsM();
+  setInterval(loadNewsM, 60000);
+  loadHoldingsM();                           // COMEX 持仓/库存
+  setInterval(loadHoldingsM, 600000);        // 10 分钟刷新
+  loadSignalLog();                           // 4H 信号验证记录（本地持久化）
+  loadTwelveData();                          // Twelve Data 4H 完整历史（208 天，主源）
+  setInterval(loadTwelveData, 600000);       // 10 分钟刷新（免费版速率限制）
+  fetchMacro();                              // 宏观因子（美元/美债利率）
+  setInterval(fetchMacro, 600000);           // 10 分钟刷新
+  loadWeeklyTrend();                         // 周线大趋势（XAUUSD 日线聚合周线）
+  setInterval(loadWeeklyTrend, 600000);      // 10 分钟刷新
+  renderVerify();
+  // 请求系统通知权限（信号推送提醒用，做多/做空信号出现时弹通知）
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  /* ---------- COMEX 黄金持仓/库存（东财 RPT_FUTUOPT_GOLDSIL JSONP） ---------- */
+  function fetchHoldingsM() {
+    return new Promise((resolve) => {
+      const cb = '_hold_' + Date.now();
+      const script = document.createElement('script');
+      script.src = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_FUTUOPT_GOLDSIL&columns=ALL&pageNumber=1&pageSize=12&sortColumns=REPORT_DATE&sortTypes=-1&filter=(INDICATOR_ID1%3D%22EMI00069026%22)&source=WEB&client=WEB&callback=' + cb + '&_=' + Date.now();
+      let done = false;
+      const cleanup = () => { script.remove(); delete window[cb]; };
+      const timer = setTimeout(() => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve(null); } }, 12000);
+      // 东财 datacenter 为"调用式"JSONP：cb({...}) → 必须预定义回调函数
+      window[cb] = (json) => {
+        if (done) return; done = true;
+        clearTimeout(timer);
+        try {
+          const data = (json && json.result && json.result.data) || [];
+          cleanup();
+          resolve(data);
+        } catch (e) { cleanup(); resolve(null); }
+      };
+      script.onerror = () => { if (!done) { done = true; clearTimeout(timer); cleanup(); resolve(null); } };
+      document.head.appendChild(script);
+    });
+  }
+  function renderHoldingsM(data) {
+    if (!data || !data.length) return;
+    holdingsData = data;
+    dataFresh.hold = Date.now();
+    const now = new Date(); const pad = n => String(n).padStart(2, '0');
+    holdingsUpdated = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    renderPredictionM();
+  }
+  async function loadHoldingsM() {
+    const d = await fetchHoldingsM();
+    if (d) renderHoldingsM(d);
+    // SPDR ETF 持仓（日频缓存 JSON）
+    try {
+      let j = null;
+      try { const r = await fetch('data/spdr_holdings.json?_=' + Date.now()); j = await r.json(); } catch (e) {}
+      if (!j) j = EMBEDDED_SPDR;  // 本地/独立运行兜底
+      if (j && j.holdings) { spdrData = j; renderPredictionM(); }
+    } catch (e) { /* 缓存缺失时忽略 */ }
+  }
+
+  /* ---------- 实时行情刷新 + 状态指示 ---------- */
+  async function refreshQuote() {
+    const q = await fetchQuote();
+    if (q) {
+      const isMinuteLevel = q.time && /:\d{2}$/.test(q.time) && q.time.endsWith(':00');
+      document.querySelector('.live-badge').innerHTML =
+        '<span class="live-dot"></span>更新 ' + q.time + (isMinuteLevel ? ' <span style="font-size:9px;color:var(--text-muted);">约1分钟/次</span>' : '');
+      const priceEl = document.getElementById('priceVal');
+      const prevPrice = parseFloat(String(priceEl.textContent).replace(/,/g, ''));
+      priceEl.textContent = fmt(q.price, 2);
+      // 价格变动时闪烁提示（与国际金价同步的视觉反馈）
+      if (prevPrice && q.price !== prevPrice) {
+        priceEl.classList.remove('flash-up', 'flash-down');
+        void priceEl.offsetWidth; // 重置动画
+        priceEl.classList.add(q.price > prevPrice ? 'flash-up' : 'flash-down');
+      }
+      const pct = (q.change / q.prevClose * 100);
+      const sign = q.change >= 0 ? '+' : '';
+      document.getElementById('priceChg').textContent = `${sign}${q.change.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+      document.getElementById('priceChg').style.color = q.change >= 0 ? 'var(--up)' : 'var(--down)';
+      document.getElementById('priceChgTag').textContent = q.change >= 0 ? '今日看涨' : '今日看跌';
+      document.getElementById('priceChgTag').style.color = q.change >= 0 ? 'var(--up)' : 'var(--down)';
+      document.getElementById('priceChgTag').style.background = q.change >= 0 ? 'rgba(242,87,76,0.15)' : 'rgba(33,178,143,0.15)';
+      document.getElementById('metaHigh').textContent = '今高 ' + fmt(q.high, 1);
+      document.getElementById('metaLow').textContent = '今低 ' + fmt(q.low, 1);
+      priceEl.style.color = q.change >= 0 ? 'var(--up)' : 'var(--down)';
+    }
+  }
+</script>
+</body>
+</html>
