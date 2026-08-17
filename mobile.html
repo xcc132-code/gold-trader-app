@@ -493,14 +493,14 @@
     </section>
 
     <section class="view" id="view-news">
-      <!-- 4H 支撑位 / 阻力位（结构位+均线+斐波那契+枢轴点） -->
+      <!-- 日线/周线 阻力位 · 支撑位（结构位+均线+斐波那契+周线枢轴） -->
       <div class="price-card">
         <div class="price-top">
-          <span class="price-label">4H 支撑位 / 阻力位</span>
-          <span class="card-pill card-pill-gold" id="newsSignalPill">区域</span>
+          <span class="price-label">日线 / 周线 · 阻力位与支撑位</span>
+          <span class="card-pill card-pill-gold" id="newsSignalPill">关键位</span>
         </div>
         <div id="newsSRBox" style="margin:8px 0;">
-          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">计算支撑/阻力区域…</span></div>
+          <div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">计算日线/周线关键位…</span></div>
         </div>
       </div>
 
@@ -954,55 +954,63 @@
     return { txt: '中性位置 · 距阻力 ' + fmt(nearestR, 1) + ' / 支撑 ' + fmt(nearestS, 1) + '，可轻仓，破位确认后再加', color: 'var(--text-secondary)' };
   }
   function calcSRZones() {
-    // 支撑/阻力区域：结构位（日线波段高低点）+ 动态均线 + 斐波那契 + 周线枢轴点
+    // 支撑/阻力：日线结构位（波段高低点）+ 动态均线 + 斐波那契 + 周线枢轴点
+    // 关键：所有位置统一按【现价】分类——上方=阻力、下方=支撑（避免历史高低点方向错乱）
     const price = lastSpot;
     const out = { price: price, supports: [], resistances: [] };
     if (!price || !dailyKlinesUSD || dailyKlinesUSD.length < 30) return out;
     const lookback = Math.min(45, dailyKlinesUSD.length - 5);
     const recent = dailyKlinesUSD.slice(-lookback);
-    const swings = [];
+
+    // 1. 收集所有"位置"（不带方向，最后统一按现价分类）
+    const pts = [];
     for (let i = 2; i < recent.length - 2; i++) {
       const bar = recent[i];
       const win = recent.slice(i - 2, i + 3);
-      if (bar.h >= Math.max(...win.map(x => x.h))) swings.push({ level: bar.h, dir: 'R', label: '日线波段高点', tag: '结构位' });
-      if (bar.l <= Math.min(...win.map(x => x.l))) swings.push({ level: bar.l, dir: 'S', label: '日线波段低点', tag: '结构位' });
+      if (bar.h >= Math.max(...win.map(x => x.h))) pts.push({ level: bar.h, label: '日线波段高点', tag: '结构位' });
+      if (bar.l <= Math.min(...win.map(x => x.l))) pts.push({ level: bar.l, label: '日线波段低点', tag: '结构位' });
     }
     const dC = dailyKlinesUSD.map(x => x.c);
     const dEma20 = calcEMA(dC, 20);
     const hC = h1Klines ? h1Klines.map(x => x.c) : [];
     const h4Ema50 = hC.length >= 50 ? calcEMA(hC, 50) : null;
+    if (dEma20 != null) pts.push({ level: dEma20, label: '日线 EMA20', tag: '动态均线' });
+    if (h4Ema50 != null) pts.push({ level: h4Ema50, label: '4H EMA50', tag: '动态均线' });
     const hi = Math.max(...recent.map(x => x.h));
     const lo = Math.min(...recent.map(x => x.l));
     const range = (hi - lo) || 1;
-    const all = [];
-    swings.forEach(s => all.push(s));
-    if (dEma20 != null) all.push({ level: dEma20, dir: dEma20 < price ? 'S' : 'R', label: '日线 EMA20', tag: '动态均线' });
-    if (h4Ema50 != null) all.push({ level: h4Ema50, dir: h4Ema50 < price ? 'S' : 'R', label: '4H EMA50', tag: '动态均线' });
-    all.push({ level: hi - range * 0.382, dir: (hi - range * 0.382) < price ? 'S' : 'R', label: '斐波那契 0.382', tag: '黄金分割' });
-    all.push({ level: hi - range * 0.5, dir: (hi - range * 0.5) < price ? 'S' : 'R', label: '斐波那契 0.5', tag: '黄金分割' });
-    all.push({ level: hi - range * 0.618, dir: (hi - range * 0.618) < price ? 'S' : 'R', label: '斐波那契 0.618', tag: '黄金分割' });
+    pts.push({ level: hi - range * 0.382, label: '斐波那契 0.382', tag: '黄金分割' });
+    pts.push({ level: hi - range * 0.5, label: '斐波那契 0.5', tag: '黄金分割' });
+    pts.push({ level: hi - range * 0.618, label: '斐波那契 0.618', tag: '黄金分割' });
     if (weeklyKlines && weeklyKlines.length >= 2) {
       const pw = weeklyKlines[weeklyKlines.length - 2];
       const P = (pw.h + pw.l + pw.c) / 3;
-      all.push({ level: P, dir: P < price ? 'S' : 'R', label: '周线枢轴', tag: '枢轴点' });
-      all.push({ level: 2 * P - pw.l, dir: 'R', label: '枢轴 R1', tag: '枢轴点' });
-      all.push({ level: 2 * P - pw.h, dir: 'S', label: '枢轴 S1', tag: '枢轴点' });
-      all.push({ level: P + (pw.h - pw.l), dir: 'R', label: '枢轴 R2', tag: '枢轴点' });
-      all.push({ level: P - (pw.h - pw.l), dir: 'S', label: '枢轴 S2', tag: '枢轴点' });
+      pts.push({ level: P, label: '周线枢轴', tag: '枢轴点' });
+      pts.push({ level: 2 * P - pw.l, label: '周线 R1', tag: '枢轴点' });
+      pts.push({ level: 2 * P - pw.h, label: '周线 S1', tag: '枢轴点' });
+      pts.push({ level: P + (pw.h - pw.l), label: '周线 R2', tag: '枢轴点' });
+      pts.push({ level: P - (pw.h - pw.l), label: '周线 S2', tag: '枢轴点' });
     }
-    const near = (a, b) => Math.abs(a - b) < range * 0.01; // 共振阈值约 1% 区间
+
+    // 2. 统一按现价分类（核心修复）：上方=阻力、下方=支撑；±0.1% 内忽略
+    const near = (a, b) => Math.abs(a - b) < range * 0.012; // 共振阈值 1.2%
     const merge = (arr, asc) => {
-      const sorted = arr.sort((a, b) => asc ? a.level - b.level : b.level - a.level);
+      arr.sort((a, b) => asc ? a.level - b.level : b.level - a.level);
       const res = [];
-      for (const x of sorted) {
+      for (const x of arr) {
         const hit = res.find(r => near(r.level, x.level));
-        if (hit) { hit.label += '｜' + x.label; if (x.tag !== hit.tag) hit.tag += '+'; }
+        if (hit) { hit.label += '｜' + x.label; }
         else res.push({ level: x.level, label: x.label, tag: x.tag });
       }
       return res;
     };
-    out.resistances = merge(all.filter(x => x.dir === 'R'), true);
-    out.supports = merge(all.filter(x => x.dir === 'S'), false);
+    const res = [], sup = [];
+    pts.forEach(x => {
+      if (x.level > price * 1.001) res.push(x);
+      else if (x.level < price * 0.999) sup.push(x);
+    });
+    out.resistances = merge(res, true);   // 阻力升序（离现价最近的在前）
+    out.supports = merge(sup, false);     // 支撑降序（离现价最近的在前）
     return out;
   }
   function renderSRZones() {
@@ -1011,38 +1019,16 @@
     const z = calcSRZones();
     if (!z.price || !z.resistances.length || !z.supports.length) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
     const price = z.price;
-    const R = z.resistances[0];   // 最近阻力 = 做空区
-    const S = z.supports[0];      // 最近支撑 = 做多区
-    const atr = (h1State && h1State.atr) ? h1State.atr : (R.level - S.level) * 0.12;
-    const pos = (price - S.level) / ((R.level - S.level) || 1); // 0=在支撑 1=在阻力
-
-    // 入场建议（结合价格位置 + XAUUSD 4H 规律）
-    let advice, aColor;
-    if (pos < 0.3) {
-      advice = '✅ <b>做多时机</b>：现价接近支撑 ' + fmt(S.level, 1) + '，可做多<br>止损 ' + fmt(S.level - atr * 0.6, 1) + ' · 目标 ' + fmt(R.level, 1);
-      aColor = 'var(--up)';
-    } else if (pos > 0.7) {
-      advice = '🔻 <b>做空时机</b>：现价接近阻力 ' + fmt(R.level, 1) + '，可做空<br>止损 ' + fmt(R.level + atr * 0.6, 1) + ' · 目标 ' + fmt(S.level, 1);
-      aColor = 'var(--down)';
-    } else {
-      advice = '⏳ <b>等待回调</b>：现价居中<br>回调到 ' + fmt(S.level, 1) + ' 做多 · 反弹到 ' + fmt(R.level, 1) + ' 做空';
-      aColor = 'var(--gold-soft)';
-    }
-
-    const zone = (title, color, bg, zz, hint) =>
-      '<div style="background:' + bg + ';border-radius:8px;padding:8px 10px;margin:4px 0;">' +
-        '<div style="font-size:10px;color:' + color + ';font-weight:700;">' + title + '</div>' +
-        '<div style="font-size:20px;font-weight:800;color:' + color + ';font-family:var(--font-mono);line-height:1.2;">' + fmt(zz.level, 1) + '</div>' +
-        '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;line-height:1.4;">' + zz.label + '</div>' +
-        '<div style="font-size:9px;color:' + color + ';margin-top:2px;">' + hint + '</div>' +
-      '</div>';
-
-    let html = '';
-    html += zone('🔻 做空区（阻力）', 'var(--down)', 'rgba(242,87,76,0.10)', R, '反弹到此做空');
-    html += '<div style="text-align:center;padding:3px 0;color:var(--gold-soft);font-weight:800;font-size:12px;">— 现价 ' + fmt(price, 1) + ' —</div>';
-    html += zone('🟢 做多区（支撑）', 'var(--up)', 'rgba(33,178,143,0.10)', S, '回调到此做多');
-    html += '<div style="margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.05);font-size:10.5px;line-height:1.6;color:' + aColor + ';">' + advice + '</div>';
-    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">进入区域后看 4H K 线反应（吞没/Pin Bar 反转）再进场，不对单一线挂单。</div>';
+    // 客观展示阻力位（上方）/ 支撑位（下方），不做多空建议
+    const line = (x, color) => '<div class="data-row" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+      '<span style="flex:1;font-size:10px;color:var(--text-secondary);line-height:1.3;">' + x.label + '</span>' +
+      '<span style="font-family:var(--font-mono);font-weight:700;color:' + color + ';font-size:13px;">' + fmt(x.level, 1) + '</span></div>';
+    let html = '<div style="font-size:9px;color:var(--text-muted);margin-bottom:2px;">现价 ' + fmt(price, 1) + ' · 日线/周线关键位（结构位+均线+斐波那契+周线枢轴）</div>';
+    html += '<div style="font-size:10px;font-weight:700;color:var(--down);margin:4px 0 2px;">阻力位（上方）</div>';
+    z.resistances.slice(0, 4).forEach(x => { html += line(x, 'var(--down)'); });
+    html += '<div style="text-align:center;padding:4px 0;color:var(--gold-soft);font-weight:800;border-top:1px dashed rgba(232,181,79,0.3);border-bottom:1px dashed rgba(232,181,79,0.3);margin:4px 0;">现价 ' + fmt(price, 1) + '</div>';
+    html += '<div style="font-size:10px;font-weight:700;color:var(--up);margin:2px 0;">支撑位（下方）</div>';
+    z.supports.slice(0, 4).forEach(x => { html += line(x, 'var(--up)'); });
     box.innerHTML = html;
   }
   async function fetchKlineViaEm() {
