@@ -1800,6 +1800,9 @@
   function renderPredictionM() {
     // 1) 顶部综合方向
     const sTech = getCycleState();
+    // OBV 量价确认（仅用于指标明细展示，趋势主导预测值不再计入）
+    const curKlines = curCycle === 'h1' ? h1Klines : (curCycle === 'm5' ? m5Klines : null);
+    const obvDir = curKlines ? calcOBV(curKlines) : null;
     // 多周期共振（保留，供信号条件展示用）
     let reso = null;
     if (sTech && indicatorState) {
