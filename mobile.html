@@ -1823,14 +1823,17 @@
     score = clamp(score, 15, 88);
     const bullPct = Math.round(score);
     const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    // 交易信号：日线趋势驱动（回测：日线收盘 vs 日线EMA9 定方向，做多59.0%/做空57.9%，ADX≥28做多61.4%）
+    // 交易信号：日线趋势驱动（回测：日线收盘 vs 日线EMA9 定方向，做多ADX≥28=61.4%，做空ADX≥25=56.7%）
     const baseSc = scoreFrom(sTech);
-    const adxOk = sTech && sTech.adxInfo && sTech.adxInfo.adx >= 20;
+    const adxVal = sTech && sTech.adxInfo ? sTech.adxInfo.adx : 0;
+    const adxOk = adxVal >= 20;      // 基础 ADX 门槛（信号条件展示用）
+    const adxLong = adxVal >= 28;    // 做多严格门槛（回测 61.4%）
+    const adxShort = adxVal >= 25;   // 做空门槛（回测 56.7%）
     const dayTrend = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
       ? (indicatorState.lastClose > indicatorState.ema9 ? 'up' : 'down') : null;
     let tSignal = '观望';
-    if (dayTrend === 'up' && adxOk) tSignal = '做多';
-    else if (dayTrend === 'down' && adxOk) tSignal = '做空';
+    if (dayTrend === 'up' && adxLong) tSignal = '做多';
+    else if (dayTrend === 'down' && adxShort) tSignal = '做空';
     // 假突破过滤：做多须突破近20根高点、做空须跌破近20根低点（回测期望收益 0.37→0.62）
     if (breakoutFilter && tSignal !== '观望' && h1Klines && h1Klines.length >= 21) {
       const win = h1Klines.slice(-21, -1); // 前20根（不含当前未收盘根）
