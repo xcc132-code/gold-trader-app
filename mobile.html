@@ -1823,21 +1823,14 @@
     score = clamp(score, 15, 88);
     const bullPct = Math.round(score);
     const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    // 交易信号门控（技术+宏观融合：阈值≥55/≤45 + 共振 + ADX≥25 + 宏观方向一致 → 多66.7%/空65.5%）
+    // 交易信号：日线趋势驱动（回测：日线收盘 vs 日线EMA9 定方向，做多59.0%/做空57.9%，ADX≥28做多61.4%）
     const baseSc = scoreFrom(sTech);
-    const adxOk = sTech && sTech.adxInfo && sTech.adxInfo.adx >= 25;
-    const macroBull = macroState ? (macroState.usdChg < 0 && macroState.rateChg > 0) : null; // 美元弱+利率降
-    const macroBear = macroState ? (macroState.usdChg >= 0 && macroState.rateChg <= 0) : null; // 美元强+利率升
+    const adxOk = sTech && sTech.adxInfo && sTech.adxInfo.adx >= 20;
+    const dayTrend = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
+      ? (indicatorState.lastClose > indicatorState.ema9 ? 'up' : 'down') : null;
     let tSignal = '观望';
-    if (macroState) {
-      // 融合信号（宏观已加载，胜率 66.7%/65.5%）
-      if (baseSc >= 55 && reso === 'bull' && adxOk && macroBull) tSignal = '做多';
-      else if (baseSc <= 45 && reso === 'bear' && adxOk && macroBear) tSignal = '做空';
-    } else {
-      // 纯技术信号（宏观未加载时降级，胜率约 53%）
-      if (baseSc >= 55 && reso === 'bull' && adxOk) tSignal = '做多';
-      else if (baseSc <= 45 && reso === 'bear' && adxOk) tSignal = '做空';
-    }
+    if (dayTrend === 'up' && adxOk) tSignal = '做多';
+    else if (dayTrend === 'down' && adxOk) tSignal = '做空';
     // 假突破过滤：做多须突破近20根高点、做空须跌破近20根低点（回测期望收益 0.37→0.62）
     if (breakoutFilter && tSignal !== '观望' && h1Klines && h1Klines.length >= 21) {
       const win = h1Klines.slice(-21, -1); // 前20根（不含当前未收盘根）
