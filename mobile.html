@@ -1811,15 +1811,23 @@
       if (curBull && dayBull) reso = 'bull';
       else if (!curBull && !dayBull) reso = 'bear';
     }
-    // 多空预测值（趋势主导版）：日线趋势为主 + 4H趋势 + ADX方向 + 宏观
-    // 回测：预测值≥80做多62-67%准、≤30做空68-76%准、30-80观望
+    // 多空预测值（降滞后版）：降低日线慢指标权重，提高4H权重 + 新增短期动量捕捉剧烈涨跌
     let score = 50;
     if (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null) {
-      score += indicatorState.lastClose > indicatorState.ema9 ? 15 : -15;  // 日线趋势（主权重）
-      if (indicatorState.ema21 != null) score += indicatorState.lastClose > indicatorState.ema21 ? 8 : -8;
+      score += indicatorState.lastClose > indicatorState.ema9 ? 8 : -8;   // 日线趋势（降权，原15）
+      if (indicatorState.ema21 != null) score += indicatorState.lastClose > indicatorState.ema21 ? 6 : -6;
     }
     if (sTech && sTech.ema21 != null && sTech.lastClose != null) {
-      score += sTech.lastClose > sTech.ema21 ? 10 : -10;  // 4H 趋势
+      score += sTech.lastClose > sTech.ema21 ? 12 : -12;   // 4H 趋势（提权，反应更快）
+    }
+    // 短期动量（新增）：最近2根4H涨跌，捕捉剧烈下跌/上涨（滞后性的解药）
+    if (h1Klines && h1Klines.length >= 3) {
+      const lastC = h1Klines[h1Klines.length - 1].c;
+      const prevC = h1Klines[h1Klines.length - 3].c;
+      if (prevC > 0) {
+        const mom = (lastC - prevC) / prevC * 100;
+        score += Math.max(-8, Math.min(8, mom * 15));
+      }
     }
     if (sTech && sTech.adxInfo) score += sTech.adxInfo.pdi > sTech.adxInfo.mdi ? 5 : -5;  // ADX 方向
     if (macroState) {
