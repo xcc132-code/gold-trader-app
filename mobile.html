@@ -2506,7 +2506,7 @@
   }
   function fetchNewsM() {
     return new Promise((resolve) => {
-      const cb = '_news_m_' + Date.now();
+      const cb = 'newsM' + Date.now();  // 新浪 callback 不允许下划线开头，须字母开头
       const script = document.createElement('script');
       script.src = 'https://zhibo.sina.com.cn/api/zhibo/feed?callback=' + cb + '&page=1&page_size=100&zhibo_id=152&_=' + Date.now();
       let done = false;
