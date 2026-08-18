@@ -1798,14 +1798,9 @@
     return obv > avg ? 'bull' : 'bear';
   }
   function renderPredictionM() {
-    // 1) 顶部综合方向（当前周期 + OBV 量能确认 + 多周期共振）
+    // 1) 顶部综合方向
     const sTech = getCycleState();
-    let score = scoreFrom(sTech);
-    // OBV 量价确认（±1，当前周期 K 线）
-    const curKlines = curCycle === 'h1' ? h1Klines : (curCycle === 'm5' ? m5Klines : null);
-    let obvDir = curKlines ? calcOBV(curKlines) : null;
-    if (obvDir) score += obvDir === 'bull' ? 1 : -1;
-    // 多周期共振（当前周期 vs 日线方向）：一致 +4 / 背离 -2（回测：共振看多正确率 61%）
+    // 多周期共振（保留，供信号条件展示用）
     let reso = null;
     if (sTech && indicatorState) {
       const curBull = scoreFrom(sTech) >= 50;
@@ -1813,14 +1808,22 @@
       if (curBull && dayBull) reso = 'bull';
       else if (!curBull && !dayBull) reso = 'bear';
     }
-    if (reso === 'bull') score += 4;
-    else if (reso === 'bear') score -= 2;
-    // 宏观因子：美元弱/利率降 → 利多黄金（回测：美元+利率组合信号正确率 70.5%）
-    if (macroState) {
-      if (macroState.usdChg < 0) score += 2; else score -= 2;
-      if (macroState.rateChg > 0) score += 1; else score -= 1;
+    // 多空预测值（趋势主导版）：日线趋势为主 + 4H趋势 + ADX方向 + 宏观
+    // 回测：预测值≥80做多62-67%准、≤30做空68-76%准、30-80观望
+    let score = 50;
+    if (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null) {
+      score += indicatorState.lastClose > indicatorState.ema9 ? 15 : -15;  // 日线趋势（主权重）
+      if (indicatorState.ema21 != null) score += indicatorState.lastClose > indicatorState.ema21 ? 8 : -8;
     }
-    score = clamp(score, 15, 88);
+    if (sTech && sTech.ema21 != null && sTech.lastClose != null) {
+      score += sTech.lastClose > sTech.ema21 ? 10 : -10;  // 4H 趋势
+    }
+    if (sTech && sTech.adxInfo) score += sTech.adxInfo.pdi > sTech.adxInfo.mdi ? 5 : -5;  // ADX 方向
+    if (macroState) {
+      if (macroState.usdChg < 0) score += 3; else score -= 3;
+      if (macroState.rateChg > 0) score += 2; else score -= 2;
+    }
+    score = clamp(score, 10, 90);
     const bullPct = Math.round(score);
     const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     // 交易信号：日线趋势驱动（回测：日线收盘 vs 日线EMA9 定方向，做多ADX≥28=61.4%，做空ADX≥25=56.7%）
