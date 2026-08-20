@@ -2095,35 +2095,27 @@
 
     // 4) 维度四：持仓量与资金流向（COMEX 库存 / 净持仓 + SPDR ETF 持仓 + H4/H1 量价）
     let holdRows = [], holdScore = 0;
-    // H4 定方向（回测：仅放量信号有效53%，缩量信号不可靠，需结合趋势）
+    // H4 定方向（回测：仅放量信号有效53%，缩量信号不可靠已删除）
     if (h1Klines && h1Klines.length >= 6) {
       const vb = h1Klines.slice(-6);
       const vAvg = vb.slice(0, 5).reduce((s, k) => s + (k.v || 0), 0) / 5;
       const vc = vb[5];
       const vChg = vc.c - vc.o;
       const vRatio = (vc.v || 0) / (vAvg || 1);
-      let bias, sv;
-      if (vChg > 0 && vRatio >= 1.2) { bias = 'H4放量上涨·多头动能'; sv = '利多'; }
-      else if (vChg < 0 && vRatio >= 1.2) { bias = 'H4放量下跌·空头动能'; sv = '利空'; }
-      else if (vRatio <= 0.8) { bias = 'H4缩量·方向不明(观望)'; sv = '中性'; }
-      else if (vChg > 0) { bias = 'H4温和上涨'; sv = '利多'; }
-      else { bias = 'H4温和下跌'; sv = '利空'; }
-      holdRows.push(renderBasisRow(bias + '（量比' + vRatio.toFixed(2) + '）', sv));
-      holdScore += sv === '利多' ? 1 : (sv === '利空' ? -1 : 0);
+      if (vChg > 0 && vRatio >= 1.2) { holdRows.push(renderBasisRow('H4放量上涨·多头动能（量比' + vRatio.toFixed(2) + '）', '利多')); holdScore += 1; }
+      else if (vChg < 0 && vRatio >= 1.2) { holdRows.push(renderBasisRow('H4放量下跌·空头动能（量比' + vRatio.toFixed(2) + '）', '利空')); holdScore -= 1; }
+      else if (vChg > 0) { holdRows.push(renderBasisRow('H4温和上涨（量比' + vRatio.toFixed(2) + '）', '利多')); holdScore += 1; }
+      else if (vChg < 0) { holdRows.push(renderBasisRow('H4温和下跌（量比' + vRatio.toFixed(2) + '）', '利空')); holdScore -= 1; }
     }
-    // H1 找时机（回测：仅放量信号有参考价值，缩量信号不可靠）
+    // H1 找时机（回测：仅放量信号有参考价值，缩量/平稳不显示）
     if (h1RawKlines && h1RawKlines.length >= 8) {
       const ub = h1RawKlines.slice(-8);
       const uAvg = ub.slice(0, 7).reduce((s, k) => s + (k.v || 0), 0) / 7;
       const uc = ub[7];
       const uChg = uc.c - uc.o;
       const uRatio = (uc.v || 0) / (uAvg || 1);
-      let timing, sv;
-      if (uChg > 0 && uRatio > 1.3) { timing = 'H1放量拉升·多头动能'; sv = '利多'; }
-      else if (uChg < 0 && uRatio > 1.3) { timing = 'H1放量下跌·空头动能'; sv = '利空'; }
-      else { timing = 'H1量价平稳·缩量信号不可靠'; sv = '中性'; }
-      holdRows.push(renderBasisRow(timing + '（量比' + uRatio.toFixed(2) + '）', sv));
-      holdScore += sv === '利多' ? 1 : (sv === '利空' ? -1 : 0);
+      if (uChg > 0 && uRatio > 1.3) { holdRows.push(renderBasisRow('H1放量拉升·多头动能（量比' + uRatio.toFixed(2) + '）', '利多')); holdScore += 1; }
+      else if (uChg < 0 && uRatio > 1.3) { holdRows.push(renderBasisRow('H1放量下跌·空头动能（量比' + uRatio.toFixed(2) + '）', '利空')); holdScore -= 1; }
     }
     if (holdingsData && holdingsData.length >= 2) {
       // 取最新两条有库存的记录
