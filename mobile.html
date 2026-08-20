@@ -1820,15 +1820,15 @@
     }
     // 多空预测值（周期敏感版）：当前周期趋势为主（连续偏离强度），日线趋势降为背景方向
     let score = 50;
-    // 当前周期趋势强度（连续偏离幅度，随周期变化）
+    // 当前周期趋势强度（连续偏离幅度，随周期变化；系数×5封顶±25，让1-5%偏离落在线性区）
     if (sTech && sTech.ema21 != null && sTech.lastClose != null) {
       const dev21 = (sTech.lastClose - sTech.ema21) / sTech.ema21 * 100;
-      score += Math.max(-18, Math.min(18, dev21 * 25));
+      score += Math.max(-25, Math.min(25, dev21 * 5));
     }
     // 当前周期 EMA9 vs EMA21（金叉/死叉强度，连续）
     if (sTech && sTech.ema9 != null && sTech.ema21 != null) {
       const dev9 = (sTech.ema9 - sTech.ema21) / sTech.ema21 * 100;
-      score += Math.max(-8, Math.min(8, dev9 * 20));
+      score += Math.max(-15, Math.min(15, dev9 * 10));
     }
     // 当前周期 RSI 动量
     if (sTech && sTech.rsi != null) score += (sTech.rsi - 50) * 0.3;
