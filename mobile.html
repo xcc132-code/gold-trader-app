@@ -185,6 +185,11 @@
             <div class="meter-bear" id="meterBear" style="width:38%"></div>
           </div>
         </div>
+        <div id="dayTrendBar" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);font-size:11px;">
+          <span style="color:var(--text-muted);">日线趋势（主方向）</span>
+          <span id="dayTrendTag" style="font-weight:700;">--</span>
+        </div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:3px;">上面「看多/看空」为 4H 短期参考；交易方向以「日线趋势」为准（回测 59%/58%）</div>
         <div class="meta-row">
           <span id="metaHigh">今高 2,436.2</span>
           <span id="metaLow">今低 2,388.4</span>
@@ -1847,6 +1852,15 @@
     const adxShort = adxVal >= 25;   // 做空门槛（回测 56.7%）
     const dayTrend = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
       ? (indicatorState.lastClose > indicatorState.ema9 ? 'up' : 'down') : null;
+    // 更新顶部「日线趋势」主方向标签
+    const dtTag = document.getElementById('dayTrendTag');
+    if (dtTag && dayTrend) {
+      const dtUp = dayTrend === 'up';
+      dtTag.textContent = dtUp ? '向上 ↑ 做多基调' : '向下 ↓ 做空基调';
+      dtTag.style.color = dtUp ? 'var(--up)' : 'var(--down)';
+      const dtBar = document.getElementById('dayTrendBar');
+      if (dtBar) dtBar.style.background = dtUp ? 'rgba(242,87,76,0.10)' : 'rgba(33,178,143,0.10)';
+    }
     let tSignal = '观望';
     if (dayTrend === 'up' && adxLong) tSignal = '做多';
     else if (dayTrend === 'down' && adxShort) tSignal = '做空';
