@@ -403,7 +403,7 @@
         <div class="card-head">
           <span class="card-title" style="display:flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#21B28F" stroke-width="1.6"/><path d="M7 3.5V7L9 8.5" stroke="#21B28F" stroke-width="1.6" stroke-linecap="round"/></svg>
-            维度四 · 持仓量与资金流向
+            维度四 · 持仓量 · 资金流向 · 量价
           </span>
           <span class="card-pill card-pill-gold" id="pHoldScore">+1</span>
         </div>
@@ -1070,6 +1070,7 @@
   let m5State = null;        // 5分钟级别指标（短线信号）
   let sinaMinRaw = null;     // 新浪分时原始分钟数据（供聚合 1H/5m）
   let h1Klines = null;       // 1H K线队列（COMEX 国际金优先）
+  let h1RawKlines = null;    // 原始 1H K线（量价分析"1H找时机"用，含成交量）
   let m5Klines = null;       // 5m K线队列（COMEX 国际金优先）
   let m5Source = '';         // 5m 数据源标记
   let h1Stale = false;       // K线源暂不可用标记（仅现价推进）
@@ -1221,12 +1222,12 @@
     return new Promise(async resolve => {
       // 1) 原生 4H（部分环境支持 klt=240）
       const k240 = await tryK(240);
-      if (k240 && k240.length > 30) return resolve({ bars: k240, agg: false });
-      // 2) 主源：1H（klt=60，稳定）→ 前端按 4 小时窗口聚合
+      if (k240 && k240.length > 30) return resolve({ bars: k240, agg: false, raw1h: null });
+      // 2) 主源：1H（klt=60，稳定）→ 前端按 4 小时窗口聚合（保留原始1H供量价分析）
       const k60 = await tryK(60);
       if (k60 && k60.length > 30) {
         const h4 = aggBars4h(k60);
-        if (h4 && h4.length > 15) return resolve({ bars: h4, agg: true });
+        if (h4 && h4.length > 15) return resolve({ bars: h4, agg: true, raw1h: k60 });
       }
       resolve(null);
     });
@@ -1713,6 +1714,7 @@
         h1Klines = r1h.bars;
         h1Source = r1h.agg ? 'COMEX 4H(1H聚合)' : 'COMEX 4H';
       }
+      if (r1h.raw1h && r1h.raw1h.length > 8) h1RawKlines = r1h.raw1h;  // 保留1H供量价分析
       h1Stale = false;
       dataFresh.kline = Date.now();
     } else if (h1Klines) {
@@ -2091,8 +2093,41 @@
     if (newsBox) newsBox.innerHTML = newsRows.length ? newsRows.join('') : '<div class="data-row"><span style="flex:1;color:var(--text-muted);">消息同步中…</span></div>';
     setT('pNewsScore', (newsScore >= 0 ? '+' : '') + newsScore);
 
-    // 4) 维度四：持仓量与资金流向（COMEX 库存 / 净持仓 + SPDR ETF 持仓）
+    // 4) 维度四：持仓量与资金流向（COMEX 库存 / 净持仓 + SPDR ETF 持仓 + H4/H1 量价）
     let holdRows = [], holdScore = 0;
+    // H4 定方向（威科夫量价：放量上涨=做多基调、放量下跌=做空、缩量盘整=观望）
+    if (h1Klines && h1Klines.length >= 6) {
+      const vb = h1Klines.slice(-6);
+      const vAvg = vb.slice(0, 5).reduce((s, k) => s + (k.v || 0), 0) / 5;
+      const vc = vb[5];
+      const vChg = vc.c - vc.o;
+      const vRatio = (vc.v || 0) / (vAvg || 1);
+      const vAmp = Math.abs(vChg) / (vc.o || 1) * 100;
+      let bias, sv;
+      if (vChg > 0 && vRatio >= 1.2) { bias = 'H4放量上涨·做多基调'; sv = '利多'; }
+      else if (vChg < 0 && vRatio >= 1.2) { bias = 'H4放量下跌·做空基调'; sv = '利空'; }
+      else if (vAmp < 0.15 && vRatio <= 0.8) { bias = 'H4缩量盘整·观望'; sv = '中性'; }
+      else if (vChg > 0) { bias = 'H4温和上涨'; sv = '利多'; }
+      else { bias = 'H4温和下跌'; sv = '利空'; }
+      holdRows.push(renderBasisRow(bias + '（量比' + vRatio.toFixed(2) + '）', sv));
+      holdScore += sv === '利多' ? 1 : (sv === '利空' ? -1 : 0);
+    }
+    // H1 找时机（价格到关键位时的量能表现：缩量回调=抛压耗尽，放量反转=动能）
+    if (h1RawKlines && h1RawKlines.length >= 8) {
+      const ub = h1RawKlines.slice(-8);
+      const uAvg = ub.slice(0, 7).reduce((s, k) => s + (k.v || 0), 0) / 7;
+      const uc = ub[7];
+      const uChg = uc.c - uc.o;
+      const uRatio = (uc.v || 0) / (uAvg || 1);
+      let timing, sv;
+      if (uChg < 0 && uRatio < 0.8) { timing = 'H1缩量回调·抛压耗尽(做多时机)'; sv = '利多'; }
+      else if (uChg > 0 && uRatio > 1.3) { timing = 'H1放量拉升·多头动能'; sv = '利多'; }
+      else if (uChg > 0 && uRatio < 0.8) { timing = 'H1缩量反弹·勿追多'; sv = '中性'; }
+      else if (uChg < 0 && uRatio > 1.3) { timing = 'H1放量下跌·空头动能'; sv = '利空'; }
+      else { timing = 'H1量价平稳'; sv = '中性'; }
+      holdRows.push(renderBasisRow(timing + '（量比' + uRatio.toFixed(2) + '）', sv));
+      holdScore += sv === '利多' ? 1 : (sv === '利空' ? -1 : 0);
+    }
     if (holdingsData && holdingsData.length >= 2) {
       // 取最新两条有库存的记录
       const withStock = holdingsData.filter(x => x.STORAGE_TON != null);
