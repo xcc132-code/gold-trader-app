@@ -186,10 +186,10 @@
           </div>
         </div>
         <div id="dayTrendBar" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);font-size:11px;">
-          <span style="color:var(--text-muted);">日线趋势（主方向）</span>
+          <span style="color:var(--text-muted);">三周期共振（日线+4H+30min）</span>
           <span id="dayTrendTag" style="font-weight:700;">--</span>
         </div>
-        <div style="font-size:9px;color:var(--text-muted);margin-top:3px;">上面「看多/看空」为 4H 短期参考；交易方向以「日线趋势」为准（回测 59%/58%）</div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:3px;">上面「看多/看空」为 4H 短期参考；三周期同向才出强信号，分歧则观望</div>
         <div class="meta-row">
           <span id="metaHigh">今高 2,436.2</span>
           <span id="metaLow">今低 2,388.4</span>
@@ -374,7 +374,7 @@
         <div id="pTechMeta" style="font-size:9px;color:var(--text-muted);margin-bottom:6px;line-height:1.6;">指标原始值加载中…</div>
         <!-- 周期切换：短线5分钟 / 中线4小时 / 长线日线 -->
         <div class="cycle-tabs" id="pCycleTabs">
-          <span class="cycle-tab" id="cycM5" onclick="setCycle('m5')">5分钟</span>
+          <span class="cycle-tab" id="cycM5" onclick="setCycle('m5')">30分钟</span>
           <span class="cycle-tab active" id="cycH1" onclick="setCycle('h1')">4小时</span>
           <span class="cycle-tab" id="cycDay" onclick="setCycle('day')">日线</span>
         </div>
@@ -1083,12 +1083,12 @@
   let h1State = null;        // 4小时级别指标（预测页核心依据）
   let h1Source = '';         // 1H 数据源标记
   let h1Updated = '';        // 1H 更新时间
-  let m5State = null;        // 5分钟级别指标（短线信号）
+  let m5State = null;        // 30分钟级别指标（短线信号）
   let sinaMinRaw = null;     // 新浪分时原始分钟数据（供聚合 1H/5m）
   let h1Klines = null;       // 1H K线队列（COMEX 国际金优先）
   let h1RawKlines = null;    // 原始 1H K线（量价分析"1H找时机"用，含成交量）
-  let m5Klines = null;       // 5m K线队列（COMEX 国际金优先）
-  let m5Source = '';         // 5m 数据源标记
+  let m5Klines = null;       // 30m K线队列（COMEX 国际金优先）
+  let m5Source = '';         // 30m 数据源标记
   let h1Stale = false;       // K线源暂不可用标记（仅现价推进）
   let lastSpot = null;       // 最新国际现货金价（现价推进用）
   let curCycle = 'h1';       // 当前选中周期：m5 / h1 / day
@@ -1340,13 +1340,13 @@
     renderPredictionM();
   }
   function fetchM5ViaEm() {
-    // COMEX 国际金 5 分钟 K（24h 交易，美元计价）
+    // COMEX 国际金 30 分钟 K（24h 交易，美元计价；回测：30min 准确率更高、噪音更小）
     const hosts = ['https://push2his.eastmoney.com', 'https://20.push2his.eastmoney.com', 'https://16.push2his.eastmoney.com'];
     return new Promise(async resolve => {
       for (let i = 0; i < 4; i++) {
         const h = hosts[i % 3];
         try {
-          const r = await fetch(h + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=5&fqt=0&lmt=160&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + i);
+          const r = await fetch(h + '/api/qt/stock/kline/get?secid=101.GC00Y&klt=30&fqt=0&lmt=260&end=20500101&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&_=' + Date.now() + i);
           const j = await r.json();
           if (j && j.data && j.data.klines && j.data.klines.length > 30) {
             return resolve(j.data.klines.map(l => { const p = l.split(','); return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +p[5] }; }));
@@ -1719,7 +1719,7 @@
       if (price < last.l) last.l = price;
     };
     if (h1Source.indexOf('COMEX') === 0) push(h1Klines);
-    if (m5Source === 'COMEX 5min') push(m5Klines);
+    if (m5Source === 'COMEX 30min') push(m5Klines);
   }
   async function refreshH1() {
     // ===== 国际金优先三重保障（解决夜间沪金停盘指标不更新） =====
@@ -1737,7 +1737,7 @@
       h1Stale = true; // K 线源暂不可用，保持旧 K + 现价推进
     }
     let m5 = await fetchM5ViaEm();
-    if (m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 5min'; }
+    if (m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 30min'; }
     // 2) 兜底：新浪沪金分时（白天/夜盘交易时段）
     if (!h1Klines || !m5Klines) {
       const raw = await fetchSinaMinRaw();
@@ -1775,7 +1775,7 @@
     return indicatorState || h1State;
   }
   function getCycleName() {
-    return curCycle === 'm5' ? '5分钟' : (curCycle === 'h1' ? '4小时' : '日线');
+    return curCycle === 'm5' ? '30分钟' : (curCycle === 'h1' ? '4小时' : '日线');
   }
   function setCycle(c) {
     curCycle = c;
@@ -1865,14 +1865,28 @@
     const adxShort = adxVal >= 25;   // 做空门槛（回测 56.7%）
     const dayTrend = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
       ? (indicatorState.lastClose > indicatorState.ema9 ? 'up' : 'down') : null;
-    // 更新顶部「日线趋势」主方向标签
+    // 三周期共振综合指令（日线 EMA9 / 4H EMA21 / 30min EMA21）
+    const dayUp = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
+      ? indicatorState.lastClose > indicatorState.ema9 : null;
+    const h4Up = (h1State && h1State.ema21 != null && h1State.lastClose != null)
+      ? h1State.lastClose > h1State.ema21 : null;
+    const m30Up = (m5State && m5State.ema21 != null && m5State.lastClose != null)
+      ? m5State.lastClose > m5State.ema21 : null;
     const dtTag = document.getElementById('dayTrendTag');
-    if (dtTag && dayTrend) {
-      const dtUp = dayTrend === 'up';
-      dtTag.textContent = dtUp ? '向上 ↑ 做多基调' : '向下 ↓ 做空基调';
-      dtTag.style.color = dtUp ? 'var(--up)' : 'var(--down)';
+    if (dtTag) {
+      const dirs = [dayUp, h4Up, m30Up].filter(x => x !== null);
+      const bulls = dirs.filter(x => x).length;
+      const bears = dirs.filter(x => !x).length;
+      let combo, color, bg;
+      if (bulls >= 3) { combo = '三周期共振做多 ★★★'; color = 'var(--up)'; bg = 'rgba(242,87,76,0.14)'; }
+      else if (bulls === 2) { combo = '偏多 · 短线可等回调'; color = 'var(--up)'; bg = 'rgba(242,87,76,0.08)'; }
+      else if (bears === 2) { combo = '偏空 · 短线可等反弹'; color = 'var(--down)'; bg = 'rgba(33,178,143,0.08)'; }
+      else if (bears >= 3) { combo = '三周期共振做空 ★★★'; color = 'var(--down)'; bg = 'rgba(33,178,143,0.14)'; }
+      else { combo = '多空分歧 · 观望'; color = 'var(--gold-soft)'; bg = 'rgba(232,181,79,0.10)'; }
+      dtTag.textContent = combo;
+      dtTag.style.color = color;
       const dtBar = document.getElementById('dayTrendBar');
-      if (dtBar) dtBar.style.background = dtUp ? 'rgba(242,87,76,0.10)' : 'rgba(33,178,143,0.10)';
+      if (dtBar) dtBar.style.background = bg;
     }
     let tSignal = '观望';
     if (dayTrend === 'up' && adxLong) tSignal = '做多';
@@ -2032,7 +2046,7 @@
       }
       // 强趋势过滤提示：5m 档单边行情中信号可靠性低，建议切 4H
       if (curCycle === 'm5' && s2.adxInfo && s2.adxInfo.adx >= 25) {
-        techRows.unshift('<div style="font-size:9.5px;color:var(--gold-soft);padding:5px 8px;background:rgba(232,181,79,0.09);border:1px solid rgba(232,181,79,0.25);border-radius:6px;margin-bottom:2px;">注意：强趋势中（ADX ' + s2.adxInfo.adx.toFixed(0) + '），5分钟指标钝化、短线信号可靠性低，建议切换 4H 周期看波段</div>');
+        techRows.unshift('<div style="font-size:9.5px;color:var(--gold-soft);padding:5px 8px;background:rgba(232,181,79,0.09);border:1px solid rgba(232,181,79,0.25);border-radius:6px;margin-bottom:2px;">注意：强趋势中（ADX ' + s2.adxInfo.adx.toFixed(0) + '），30分钟指标钝化、短线信号可靠性低，建议切换 4H 周期看波段</div>');
       }
       if (s2.adxInfo) {
         const v = s2.adxInfo.pdi > s2.adxInfo.mdi ? '利多' : '利空';
