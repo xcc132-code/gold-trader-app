@@ -1858,20 +1858,12 @@
     }
     score = clamp(score, 10, 90);
     const bullPct = Math.round(score);
-    // 三周期综合预测（回测：日线×0.6+4H×0.3+30min×0.1 = 综合准确率57.2%，做多57.1%/做空57.3%）
-    const dayScore = scoreFrom(indicatorState);
-    const h4Score = scoreFrom(h1State);
-    const m30Score = scoreFrom(m5State);
-    const comboScore = dayScore * 0.6 + h4Score * 0.3 + m30Score * 0.1;
     const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    // 交易信号：日线趋势 + ADX（回测最优：日线上+ADX≥25做多62.2%、日线下+ADX≥25做空59.2%、综合60.6%）
+    // 交易信号：三周期分层择时（日线定方向 + 4H逆向择时），见下方 tSignal
     const baseSc = scoreFrom(sTech);
     const adxVal = sTech && sTech.adxInfo ? sTech.adxInfo.adx : 0;
     const adxOk = adxVal >= 20;      // 基础 ADX 门槛（信号条件展示用）
-    const adxLong = adxVal >= 25;    // 做多门槛（回测 62.2%）
-    const adxShort = adxVal >= 25;   // 做空门槛（回测 59.2%）
-    const dayTrend = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
-      ? (indicatorState.lastClose > indicatorState.ema9 ? 'up' : 'down') : null;
+    // 三周期分层择时：日线定方向（EMA9）+ 4H 逆向择时（EMA21），见下方 tSignal
     // 三周期共振综合指令（日线 EMA9 / 4H EMA21 / 30min EMA21）
     const dayUp = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
       ? indicatorState.lastClose > indicatorState.ema9 : null;
@@ -1895,9 +1887,11 @@
       const dtBar = document.getElementById('dayTrendBar');
       if (dtBar) dtBar.style.background = bg;
     }
+    // 交易信号：三周期分层择时——日线定方向 + 4H 逆向择时（防追单）
+    // 严格回测（真实日线+时间对齐，1216样本）：追高46.8%/追空47.4%（亏），低吸57%/高空58.1%（赚）
     let tSignal = '观望';
-    if (dayTrend === 'up' && adxLong) tSignal = '做多';
-    else if (dayTrend === 'down' && adxShort) tSignal = '做空';
+    if (dayUp === true && h4Up === false) tSignal = '做多';        // 日线向上 + 4H回调 → 低吸
+    else if (dayUp === false && h4Up === true) tSignal = '做空';   // 日线向下 + 4H反弹 → 高空
     // 假突破过滤：做多须突破近20根高点、做空须跌破近20根低点（回测期望收益 0.37→0.62）
     if (breakoutFilter && tSignal !== '观望' && h1Klines && h1Klines.length >= 21) {
       const win = h1Klines.slice(-21, -1); // 前20根（不含当前未收盘根）
@@ -2231,7 +2225,11 @@
     if (actionSub) {
       if (dataDead) actionSub.textContent = '数据停更（' + dataWarn + '），预测暂停';
       else if (evt.active) actionSub.textContent = '大事件窗口' + evtTag + '，信号降级观望';
-      else actionSub.textContent = '日线趋势' + (dayTrend === 'up' ? '向上' : '向下') + ' + ADX ' + adxVal.toFixed(0) + ' · 综合 ' + comboScore.toFixed(0) + ' 分 · 回测准确率 60.6%';
+      else if (tSignal === '做多') actionSub.textContent = '日线向上 + 4H回调 → 低吸做多 · 回测57%';
+      else if (tSignal === '做空') actionSub.textContent = '日线向下 + 4H反弹 → 高空做空 · 回测58%';
+      else if (dayUp === true) actionSub.textContent = '日线向上但4H同向追高 · 等4H回调再低吸（追高仅47%）';
+      else if (dayUp === false) actionSub.textContent = '日线向下但4H同向追空 · 等4H反弹再高空（追空仅47%）';
+      else actionSub.textContent = '数据加载中 · 观望';
     }
     // 入场时机：信号（方向）结合支撑阻力（位置），避免追涨杀跌
     const timingEl = document.getElementById('pEntryTiming');
@@ -2245,10 +2243,10 @@
         timingEl.style.display = 'none';
       }
     }
-    // 结论标签/文字（日线趋势 + ADX 驱动，综合分辅助）
-    if (conclusionTag) conclusionTag.textContent = (tSignal === '做多' ? '做多' : (tSignal === '做空' ? '做空' : '观望')) + ' · ADX ' + adxVal.toFixed(0);
+    // 结论标签/文字（三周期分层择时：日线定方向 + 4H择时）
+    if (conclusionTag) conclusionTag.textContent = tSignal + (tSignal === '观望' ? '' : ' · 低吸/高空');
     const dir = tSignal === '做多' ? '看多' : (tSignal === '做空' ? '看空' : '震荡');
-    if (conclusionText) conclusionText.textContent = '日线趋势' + (dayTrend === 'up' ? '向上' : '向下') + ' + ADX ' + adxVal.toFixed(0) + ' → ' + tSignal + '（综合 ' + comboScore.toFixed(0) + ' 分 · 日线 ' + dayScore.toFixed(0) + ' · 4H ' + h4Score.toFixed(0) + ' · 30min ' + m30Score.toFixed(0) + '）' + (dataDead ? '数据停更暂停' : (evt.active ? '事件窗口观望' : '，回测准确率60.6%'));
+    if (conclusionText) conclusionText.textContent = '三周期分层：日线' + (dayUp ? '向上' : '向下') + '定方向 + 4H' + (h4Up ? '高于EMA21' : '低于EMA21') + '择时机 → ' + tSignal + '（回测：低吸57% · 高空58% · 追单仅47%）' + (dataDead ? ' · 数据停更暂停' : (evt.active ? ' · 事件窗口观望' : ''));
     renderDataStatus(dataWarn, dataDead);
     renderMultiTrend();
     renderNewsSignal();
