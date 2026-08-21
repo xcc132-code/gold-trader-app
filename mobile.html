@@ -186,10 +186,10 @@
           </div>
         </div>
         <div id="dayTrendBar" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);font-size:11px;">
-          <span style="color:var(--text-muted);">三周期共振（日线+4H+30min）</span>
+          <span style="color:var(--text-muted);">三周期分层（日线方向 + 4H位置 + 30min时机）</span>
           <span id="dayTrendTag" style="font-weight:700;">--</span>
         </div>
-        <div style="font-size:9px;color:var(--text-muted);margin-top:3px;">上面「看多/看空」为 4H 短期参考；三周期同向才出强信号，分歧则观望</div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:3px;">日线定方向 · 4H定回调/反弹位置 · 30min定企稳时机；低吸/高空才进场，追单则观望</div>
         <div class="meta-row">
           <span id="metaHigh">今高 2,436.2</span>
           <span id="metaLow">今低 2,388.4</span>
@@ -1863,8 +1863,7 @@
     const baseSc = scoreFrom(sTech);
     const adxVal = sTech && sTech.adxInfo ? sTech.adxInfo.adx : 0;
     const adxOk = adxVal >= 20;      // 基础 ADX 门槛（信号条件展示用）
-    // 三周期分层择时：日线定方向（EMA9）+ 4H 逆向择时（EMA21），见下方 tSignal
-    // 三周期共振综合指令（日线 EMA9 / 4H EMA21 / 30min EMA21）
+    // 三周期分层择时：日线定方向 / 4H定位置 / 30min定时机（见下方 tSignal）
     const dayUp = (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null)
       ? indicatorState.lastClose > indicatorState.ema9 : null;
     const h4Up = (h1State && h1State.ema21 != null && h1State.lastClose != null)
@@ -1873,15 +1872,18 @@
       ? m5State.lastClose > m5State.ema21 : null;
     const dtTag = document.getElementById('dayTrendTag');
     if (dtTag) {
-      const dirs = [dayUp, h4Up, m30Up].filter(x => x !== null);
-      const bulls = dirs.filter(x => x).length;
-      const bears = dirs.filter(x => !x).length;
       let combo, color, bg;
-      if (bulls >= 3) { combo = '三周期共振做多 ★★★'; color = 'var(--up)'; bg = 'rgba(242,87,76,0.14)'; }
-      else if (bulls === 2) { combo = '偏多 · 短线可等回调'; color = 'var(--up)'; bg = 'rgba(242,87,76,0.08)'; }
-      else if (bears === 2) { combo = '偏空 · 短线可等反弹'; color = 'var(--down)'; bg = 'rgba(33,178,143,0.08)'; }
-      else if (bears >= 3) { combo = '三周期共振做空 ★★★'; color = 'var(--down)'; bg = 'rgba(33,178,143,0.14)'; }
-      else { combo = '多空分歧 · 观望'; color = 'var(--gold-soft)'; bg = 'rgba(232,181,79,0.10)'; }
+      if (dayUp === true) {
+        if (h4Up === false && m30Up === true) { combo = '低吸做多 · 30min已企稳 ✅'; color = 'var(--up)'; bg = 'rgba(242,87,76,0.14)'; }
+        else if (h4Up === false) { combo = '低吸区 · 等30min企稳再进'; color = 'var(--up)'; bg = 'rgba(242,87,76,0.08)'; }
+        else { combo = '日线向上但4H追高 · 等回调'; color = 'var(--gold-soft)'; bg = 'rgba(232,181,79,0.10)'; }
+      } else if (dayUp === false) {
+        if (h4Up === true && m30Up === false) { combo = '高空做空 · 30min已回落 ✅'; color = 'var(--down)'; bg = 'rgba(33,178,143,0.14)'; }
+        else if (h4Up === true) { combo = '高空区 · 等30min回落再进'; color = 'var(--down)'; bg = 'rgba(33,178,143,0.08)'; }
+        else { combo = '日线向下但4H追空 · 等反弹'; color = 'var(--gold-soft)'; bg = 'rgba(232,181,79,0.10)'; }
+      } else {
+        combo = '数据加载中 · 观望'; color = 'var(--text-secondary)'; bg = 'rgba(255,255,255,0.04)';
+      }
       dtTag.textContent = combo;
       dtTag.style.color = color;
       const dtBar = document.getElementById('dayTrendBar');
@@ -2225,8 +2227,8 @@
     if (actionSub) {
       if (dataDead) actionSub.textContent = '数据停更（' + dataWarn + '），预测暂停';
       else if (evt.active) actionSub.textContent = '大事件窗口' + evtTag + '，信号降级观望';
-      else if (tSignal === '做多') actionSub.textContent = '日线向上 + 4H回调 → 低吸做多 · 回测57%';
-      else if (tSignal === '做空') actionSub.textContent = '日线向下 + 4H反弹 → 高空做空 · 回测58%';
+      else if (tSignal === '做多') actionSub.textContent = '日线向上 + 4H回调 → 低吸' + (m30Up === true ? ' · 30min已企稳，可入场（回测62%）' : (m30Up === false ? ' · 30min未企稳，等转上再入场（回测57%）' : ''));
+      else if (tSignal === '做空') actionSub.textContent = '日线向下 + 4H反弹 → 高空' + (m30Up === false ? ' · 30min已回落，可入场（回测58%）' : (m30Up === true ? ' · 30min未回落，等转跌再入场（回测58%）' : ''));
       else if (dayUp === true) actionSub.textContent = '日线向上但4H同向追高 · 等4H回调再低吸（追高仅47%）';
       else if (dayUp === false) actionSub.textContent = '日线向下但4H同向追空 · 等4H反弹再高空（追空仅47%）';
       else actionSub.textContent = '数据加载中 · 观望';
@@ -2246,7 +2248,7 @@
     // 结论标签/文字（三周期分层择时：日线定方向 + 4H择时）
     if (conclusionTag) conclusionTag.textContent = tSignal + (tSignal === '观望' ? '' : ' · 低吸/高空');
     const dir = tSignal === '做多' ? '看多' : (tSignal === '做空' ? '看空' : '震荡');
-    if (conclusionText) conclusionText.textContent = '三周期分层：日线' + (dayUp ? '向上' : '向下') + '定方向 + 4H' + (h4Up ? '高于EMA21' : '低于EMA21') + '择时机 → ' + tSignal + '（回测：低吸57% · 高空58% · 追单仅47%）' + (dataDead ? ' · 数据停更暂停' : (evt.active ? ' · 事件窗口观望' : ''));
+    if (conclusionText) conclusionText.textContent = '三周期分层：日线' + (dayUp ? '向上' : '向下') + '定方向 · 4H' + (h4Up ? '高于' : '低于') + 'EMA21定位置 · 30min' + (m30Up === true ? '已企稳' : (m30Up === false ? '未企稳' : '待定')) + '定时机 → ' + tSignal + '（回测：低吸57% · 高空58% · 追单仅47%）' + (dataDead ? ' · 数据停更暂停' : (evt.active ? ' · 事件窗口观望' : ''));
     renderDataStatus(dataWarn, dataDead);
     renderMultiTrend();
     renderNewsSignal();
