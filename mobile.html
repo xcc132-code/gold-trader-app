@@ -1718,7 +1718,7 @@
       if (price > last.h) last.h = price;
       if (price < last.l) last.l = price;
     };
-    if (h1Source.indexOf('COMEX') === 0) push(h1Klines);
+    if (h1Source && h1Source.indexOf('沪金') !== 0) push(h1Klines);   // 美元源（COMEX/TwelveData）推进现价
     if (m5Source === 'COMEX 30min') push(m5Klines);
   }
   async function refreshH1() {
@@ -1733,8 +1733,10 @@
       if (r1h.raw1h && r1h.raw1h.length > 8) h1RawKlines = r1h.raw1h;  // 保留1H供量价分析
       h1Stale = false;
       dataFresh.kline = Date.now();
-    } else if (h1Klines) {
-      h1Stale = true; // K 线源暂不可用，保持旧 K + 现价推进
+    } else if (!h1Klines || h1Klines.length < 15) {
+      h1Stale = true; // 真正缺数据（东财失败且无 Twelve Data/旧 K）才标记暂不可用
+    } else {
+      h1Stale = false; // 东财备用源失败，但主数据（Twelve Data/旧 K）仍可用，不算暂不可用
     }
     let m5 = await fetchM5ViaEm();
     if (m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 30min'; }
