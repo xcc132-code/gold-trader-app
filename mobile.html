@@ -1017,6 +1017,17 @@
       if (x.level > price * 1.001) res.push(x);
       else if (x.level < price * 0.999) sup.push(x);
     });
+    // 创新高/新低时补充预测目标位（斐波那契扩展，价格上方/下方），避免阻力/支撑为空
+    if (!res.length) {
+      res.push({ level: hi + range * 0.382, label: '斐波那契扩展0.382', tag: '预测目标' });
+      res.push({ level: hi + range * 0.618, label: '斐波那契扩展0.618', tag: '预测目标' });
+      res.push({ level: hi + range * 1.0, label: '斐波那契扩展1.0', tag: '预测目标' });
+    }
+    if (!sup.length) {
+      sup.push({ level: lo - range * 0.382, label: '斐波那契扩展0.382', tag: '预测目标' });
+      sup.push({ level: lo - range * 0.618, label: '斐波那契扩展0.618', tag: '预测目标' });
+      sup.push({ level: lo - range * 1.0, label: '斐波那契扩展1.0', tag: '预测目标' });
+    }
     out.resistances = merge(res, true);   // 阻力升序（离现价最近的在前）
     out.supports = merge(sup, false);     // 支撑降序（离现价最近的在前）
     return out;
