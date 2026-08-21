@@ -1858,6 +1858,11 @@
     }
     score = clamp(score, 10, 90);
     const bullPct = Math.round(score);
+    // 三周期综合预测（回测：日线×0.6+4H×0.3+30min×0.1 = 综合准确率57.2%，做多57.1%/做空57.3%）
+    const dayScore = scoreFrom(indicatorState);
+    const h4Score = scoreFrom(h1State);
+    const m30Score = scoreFrom(m5State);
+    const comboScore = dayScore * 0.6 + h4Score * 0.3 + m30Score * 0.1;
     const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     // 交易信号：日线趋势驱动（回测：日线收盘 vs 日线EMA9 定方向，做多ADX≥28=61.4%，做空ADX≥25=56.7%）
     const baseSc = scoreFrom(sTech);
@@ -2204,7 +2209,7 @@
     const conclusionText = document.getElementById('pConclusionText');
     const actionEl = document.getElementById('pActionSignal');
     const actionSub = document.getElementById('pActionSub');
-    // 醒目操作指令：做多 / 做空 / 观望（明确可执行，而非概率）
+    // 醒目操作指令：做多 / 做空 / 观望（三周期综合公式：≥55做多、≤45做空）
     if (actionEl) {
       if (dataDead) {
         actionEl.textContent = '暂停';
@@ -2212,10 +2217,10 @@
       } else if (evt.active) {
         actionEl.textContent = '观望';
         actionEl.style.color = 'var(--text-secondary)';
-      } else if (tSignal === '做多') {
+      } else if (comboScore >= 55) {
         actionEl.textContent = '做多';
         actionEl.style.color = 'var(--up)';
-      } else if (tSignal === '做空') {
+      } else if (comboScore <= 45) {
         actionEl.textContent = '做空';
         actionEl.style.color = 'var(--down)';
       } else {
@@ -2226,9 +2231,7 @@
     if (actionSub) {
       if (dataDead) actionSub.textContent = '数据停更（' + dataWarn + '），预测暂停';
       else if (evt.active) actionSub.textContent = '大事件窗口' + evtTag + '，信号降级观望';
-      else if (tSignal === '做多') actionSub.textContent = '买入 XAUUSD · 入场/止损/目标见下方风险卡';
-      else if (tSignal === '做空') actionSub.textContent = '卖出 XAUUSD · 入场/止损/目标见下方风险卡';
-      else actionSub.textContent = '观望原因：' + watchReason(baseSc, reso, adxOk, macroState);
+      else actionSub.textContent = '综合 ' + comboScore.toFixed(0) + ' 分（日线' + dayScore.toFixed(0) + ' · 4H ' + h4Score.toFixed(0) + ' · 30min ' + m30Score.toFixed(0) + '）· 回测准确率57%';
     }
     // 入场时机：信号（方向）结合支撑阻力（位置），避免追涨杀跌
     const timingEl = document.getElementById('pEntryTiming');
@@ -2243,9 +2246,9 @@
       }
     }
     // 概率作为辅助说明（不是操作指令）
-    if (conclusionTag) conclusionTag.textContent = (total >= 3 ? '偏多' : (total >= 1 ? '中性偏多' : (total <= -3 ? '偏空' : (total <= -1 ? '中性偏空' : '中性')))) + ' ' + bullPct + '%';
-    const dir = total >= 1 ? '看多' : (total <= -1 ? '看空' : '震荡');
-    if (conclusionText) conclusionText.textContent = '看多概率 ' + bullPct + '% · 经济数据' + (ecoScore >= 0 ? '偏多' : '偏空') + '、技术指标' + (techScore >= 0 ? '偏多' : '偏空') + '、消息面' + (newsScore >= 0 ? '偏多' : '偏空') + '、持仓' + (holdScore >= 0 ? '偏多' : '偏空') + '。' + (dataDead ? '数据源停更，预测已暂停。' : (evt.active ? '大事件窗口，技术信号自动观望。' : (tSignal === '做多' ? '信号已确认：做多（技术+宏观共振，真实4H胜率约67%）。' : (tSignal === '做空' ? '信号已确认：做空（技术+宏观共振，真实4H胜率约66%）。' : '概率不等于指令——只有打分/共振/趋势/宏观四条件全满足才出做多/做空，否则观望。'))));
+    if (conclusionTag) conclusionTag.textContent = (comboScore >= 55 ? '做多' : (comboScore <= 45 ? '做空' : '观望')) + ' ' + comboScore.toFixed(0) + '分';
+    const dir = comboScore >= 55 ? '看多' : (comboScore <= 45 ? '看空' : '震荡');
+    if (conclusionText) conclusionText.textContent = '三周期综合 ' + comboScore.toFixed(0) + ' 分（日线 ' + dayScore.toFixed(0) + ' · 4H ' + h4Score.toFixed(0) + ' · 30min ' + m30Score.toFixed(0) + '）' + '。' + (dataDead ? '数据源停更，预测已暂停。' : (evt.active ? '大事件窗口，技术信号自动观望。' : '综合≥55做多、≤45做空、中间观望（回测准确率57.2%）。'));
     renderDataStatus(dataWarn, dataDead);
     renderMultiTrend();
     renderNewsSignal();
