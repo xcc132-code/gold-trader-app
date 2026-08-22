@@ -1032,22 +1032,82 @@
     out.supports = merge(sup, false);     // 支撑降序（离现价最近的在前）
     return out;
   }
+  function cycleSR(klines, price, emaList) {
+    // 计算某周期的支撑/阻力：波段高低点 + 动态均线，统一按现价分类（上方=阻力、下方=支撑）
+    if (!klines || klines.length < 20 || !price) return null;
+    const pts = [];
+    const lookback = Math.min(30, klines.length - 4);
+    const recent = klines.slice(-lookback);
+    for (let i = 2; i < recent.length - 2; i++) {
+      const bar = recent[i];
+      const win = recent.slice(i - 2, i + 3);
+      if (bar.h >= Math.max(...win.map(x => x.h))) pts.push({ level: bar.h, label: '波段高' });
+      if (bar.l <= Math.min(...win.map(x => x.l))) pts.push({ level: bar.l, label: '波段低' });
+    }
+    const closes = klines.map(x => x.c);
+    for (const e of emaList) {
+      if (closes.length >= e.p) {
+        const v = calcEMA(closes, e.p);
+        if (v != null && isFinite(v)) pts.push({ level: v, label: e.label });
+      }
+    }
+    const res = [], sup = [];
+    pts.forEach(x => {
+      if (x.level > price * 1.0005) res.push(x);
+      else if (x.level < price * 0.9995) sup.push(x);
+    });
+    const near = (a, b) => Math.abs(a - b) < price * 0.006;
+    const merge = (arr, asc) => {
+      arr.sort((a, b) => asc ? a.level - b.level : b.level - a.level);
+      const out = [];
+      for (const x of arr) {
+        const hit = out.find(r => near(r.level, x.level));
+        if (hit) hit.label += '｜' + x.label;
+        else out.push({ level: x.level, label: x.label });
+      }
+      return out;
+    };
+    return { resistances: merge(res, true).slice(0, 2), supports: merge(sup, false).slice(0, 2) };
+  }
   function renderSRZones() {
     const box = document.getElementById('newsSRBox');
     if (!box) return;
-    const z = calcSRZones();
-    if (!z.price || !z.resistances.length || !z.supports.length) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
-    const price = z.price;
-    // 客观展示阻力位（上方）/ 支撑位（下方），不做多空建议
-    const line = (x, color) => '<div class="data-row" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
-      '<span style="flex:1;font-size:10px;color:var(--text-secondary);line-height:1.3;">' + x.label + '</span>' +
-      '<span style="font-family:var(--font-mono);font-weight:700;color:' + color + ';font-size:13px;">' + fmt(x.level, 1) + '</span></div>';
-    let html = '<div style="font-size:9px;color:var(--text-muted);margin-bottom:2px;">现价 ' + fmt(price, 1) + ' · 日线/周线关键位（结构位+均线+斐波那契+周线枢轴）</div>';
-    html += '<div style="font-size:10px;font-weight:700;color:var(--down);margin:4px 0 2px;">阻力位（上方）</div>';
-    z.resistances.slice(0, 4).forEach(x => { html += line(x, 'var(--down)'); });
-    html += '<div style="text-align:center;padding:4px 0;color:var(--gold-soft);font-weight:800;border-top:1px dashed rgba(232,181,79,0.3);border-bottom:1px dashed rgba(232,181,79,0.3);margin:4px 0;">现价 ' + fmt(price, 1) + '</div>';
-    html += '<div style="font-size:10px;font-weight:700;color:var(--up);margin:2px 0;">支撑位（下方）</div>';
-    z.supports.slice(0, 4).forEach(x => { html += line(x, 'var(--up)'); });
+    const price = lastSpot;
+    if (!price) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
+    const daily = cycleSR(dailyKlinesUSD, price, [{ p: 20, label: 'EMA20' }, { p: 60, label: 'EMA60' }]);
+    const h4 = cycleSR(h1Klines, price, [{ p: 21, label: 'EMA21' }, { p: 50, label: 'EMA50' }]);
+    const m30 = cycleSR(m5Klines, price, [{ p: 21, label: 'EMA21' }]);
+    const block = (icon, title, tag, color, sr) => {
+      if (!sr || (!sr.resistances.length && !sr.supports.length)) return '';
+      let h = '<div style="margin:7px 0 3px;font-size:10.5px;font-weight:700;color:' + color + ';">' + icon + ' ' + title +
+        ' <span style="font-weight:400;color:var(--text-muted);font-size:9px;">' + tag + '</span></div>';
+      if (sr.resistances.length) {
+        h += '<div style="font-size:9px;color:var(--text-muted);margin:2px 0 1px;">阻力（上方）</div>';
+        sr.resistances.forEach(x => { h += '<div class="data-row" style="padding:3px 0;"><span style="flex:1;font-size:10px;color:var(--text-secondary);">' + x.label + '</span><span style="font-family:var(--font-mono);font-weight:700;color:var(--down);font-size:12px;">' + fmt(x.level, 1) + '</span></div>'; });
+      }
+      if (sr.supports.length) {
+        h += '<div style="font-size:9px;color:var(--text-muted);margin:2px 0 1px;">支撑（下方）</div>';
+        sr.supports.forEach(x => { h += '<div class="data-row" style="padding:3px 0;"><span style="flex:1;font-size:10px;color:var(--text-secondary);">' + x.label + '</span><span style="font-family:var(--font-mono);font-weight:700;color:var(--up);font-size:12px;">' + fmt(x.level, 1) + '</span></div>'; });
+      }
+      return h;
+    };
+    let html = '<div style="font-size:10px;font-weight:700;color:var(--gold-soft);margin-bottom:4px;">现价 ' + fmt(price, 1) + ' · 三周期分层关键位（日线定方向 / 4H狙击区 / 30min入场止损）</div>';
+    html += block('📊', '日线 · 战略层', '定方向', 'var(--gold-soft)', daily);
+    html += block('📈', '4小时 · 战役层', '狙击区', 'var(--down)', h4);
+    html += block('🎯', '30分钟 · 战术层', '入场+止损', 'var(--up)', m30);
+    // 止损参考（用30min关键位，更贴近价格、盈亏比更优；缺30min时降级到4H/日线）
+    const stopSrc = (m30 && (m30.supports.length || m30.resistances.length)) ? m30 : ((h4 && (h4.supports.length || h4.resistances.length)) ? h4 : daily);
+    if (stopSrc && (stopSrc.supports.length || stopSrc.resistances.length)) {
+      const sl = stopSrc.supports[0] ? stopSrc.supports[0].level : null;
+      const sr = stopSrc.resistances[0] ? stopSrc.resistances[0].level : null;
+      let stopHtml = '<div style="margin:8px 0 0;padding:8px 10px;border-radius:8px;background:rgba(232,181,79,0.08);border:1px solid rgba(232,181,79,0.28);font-size:10.5px;line-height:1.8;">';
+      stopHtml += '<div style="font-weight:700;color:var(--gold-soft);margin-bottom:2px;">🛑 止损参考（破位即走）</div>';
+      if (sl) stopHtml += '<div>做多止损：<b style="color:var(--up);font-family:var(--font-mono);font-size:12px;">' + fmt(sl * 0.9985, 1) + '</b>（30min支撑 ' + fmt(sl, 1) + ' 下方）</div>';
+      if (sr) stopHtml += '<div>做空止损：<b style="color:var(--down);font-family:var(--font-mono);font-size:12px;">' + fmt(sr * 1.0015, 1) + '</b>（30min阻力 ' + fmt(sr, 1) + ' 上方）</div>';
+      stopHtml += '<div style="color:var(--text-muted);font-size:9px;">小周期关键位止损更贴近价格，盈亏比更优；价格反向破位立即离场</div>';
+      stopHtml += '</div>';
+      html += stopHtml;
+    }
     box.innerHTML = html;
   }
   async function fetchKlineViaEm() {
