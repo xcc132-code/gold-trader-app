@@ -1548,31 +1548,26 @@
     if (score >= 70) lvl = lvl === '高' ? '中' : '低';
     return { stop: stop, target: target, rr: rr, lvl: lvl };
   }
-  function renderSignalCond(baseSc, reso, adxOk, tSignal, score) {
-    // 信号条件明细：打分/共振/ADX 三条件勾选 + 宏观状态（中性显示）
+  function renderSignalCond(dayUp, h4Up, m30Up, tSignal) {
+    // 信号条件明细：三周期分层择时（日线方向 / 4H位置 / 30min时机）
     const el = document.getElementById('pSignalCond');
     if (!el) return;
-    const sc = score || 50;
-    const longTh = 55, shortTh = 45;
-    const scOk = (tSignal === '做多' && sc >= longTh) || (tSignal === '做空' && sc <= shortTh) || (sc >= longTh || sc <= shortTh);
-    const rTag = reso === 'bull' ? '共振看多' : (reso === 'bear' ? '共振看空' : '背离');
-    const rOk = reso === 'bull' || reso === 'bear';
-    const aOk = adxOk;
     const mk = ok => ok ? '<span style="color:var(--up);font-weight:700;">✓</span>' : '<span style="color:var(--down);font-weight:700;">✗</span>';
-    // 宏观状态（中性展示，用颜色表方向）
-    let macroHtml;
-    if (!macroState) {
-      macroHtml = '<span style="color:var(--text-muted);">宏观 加载中…</span>';
-    } else {
-      const uc = macroState.usdChg < 0 ? 'var(--up)' : 'var(--down)';
-      const rc = macroState.rateChg > 0 ? 'var(--up)' : 'var(--down)';
-      macroHtml = '<span>宏观 <span style="color:' + uc + ';font-weight:600;">美元' + (macroState.usdChg < 0 ? '弱' : '强') + '</span> · <span style="color:' + rc + ';font-weight:600;">利率' + (macroState.rateChg > 0 ? '降' : '升') + '</span></span>';
-    }
+    // 日线方向（定方向）
+    const dayTxt = dayUp === true ? '日线向上·做多向' : (dayUp === false ? '日线向下·做空向' : '日线加载中');
+    const dayOk = dayUp != null;
+    // 4H 位置（逆向择时：回调低吸 / 反弹高空）
+    let h4Txt, h4Ok;
+    if (dayUp === true) { h4Txt = h4Up === false ? '4H回调·低吸点' : '4H追高·等回调'; h4Ok = h4Up === false; }
+    else if (dayUp === false) { h4Txt = h4Up === true ? '4H反弹·高空点' : '4H追空·等反弹'; h4Ok = h4Up === true; }
+    else { h4Txt = '4H位置待定'; h4Ok = false; }
+    // 30min 时机（企稳确认）
+    const m30Txt = m30Up === true ? '30min企稳·可入场' : (m30Up === false ? '30min未企稳·等转势' : '30min加载中');
+    const m30Ok = (tSignal === '做多' && m30Up === true) || (tSignal === '做空' && m30Up === false);
     el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10px;color:var(--text-secondary);">' +
-      '<span>' + mk(scOk) + ' 打分 ' + sc.toFixed(0) + (tSignal === '做空' ? ' ≤' + shortTh : ' ≥' + longTh) + '</span>' +
-      '<span>' + mk(rOk) + ' ' + rTag + '</span>' +
-      '<span>' + mk(aOk) + ' ADX' + (adxOk ? '≥25' : '<25') + '</span>' +
-      macroHtml +
+      '<span>' + mk(dayOk) + ' ' + dayTxt + '</span>' +
+      '<span>' + mk(h4Ok) + ' ' + h4Txt + '</span>' +
+      '<span>' + mk(m30Ok) + ' ' + m30Txt + '</span>' +
       '</div>';
   }
   function updateActiveTrade(s, signal, price) {
@@ -1938,7 +1933,7 @@
     if (lastSpot) updateActiveTrade(sTech, confSignal, lastSpot);
     // 交易风险面板（XAUUSD 买入/卖出判断）用实时信号 + 确认信号展示
     renderRisk(sTech, tSignal, lastSpot, score);
-    renderSignalCond(baseSc, reso, adxOk, tSignal, score);
+    renderSignalCond(dayUp, h4Up, m30Up, tSignal);
     if (tSignal !== confSignal) {
       const cbox = document.getElementById('pRiskText');
       if (cbox && cbox.innerHTML.indexOf('确认') < 0) {
