@@ -1535,8 +1535,9 @@
     });
     if (changed) saveSignalLog();
   }
-  function recordSignal(dir, price, adx) {
+  function recordSignal(dir, price, adx, layers) {
     // 确认信号方向变化时记录；转观望时结算（防抖动：连续确认后才变方向）
+    // layers：{dayUp, h4Up, m30Up} 记录信号触发时的三层状态（战略/战役/战术层），供分层验证
     settleSignals(price);
     const last = signalLog[signalLog.length - 1];
     if (last && last.status === 'open' && last.dir !== dir) {
@@ -1548,7 +1549,7 @@
       }
     }
     if ((dir === '做多' || dir === '做空') && !(last && last.status === 'open' && last.dir === dir)) {
-      signalLog.push({ ts: Date.now(), price: price, dir: dir, status: 'open', adx: adx != null ? adx : 0 });
+      signalLog.push({ ts: Date.now(), price: price, dir: dir, status: 'open', adx: adx != null ? adx : 0, layers: layers || null });
       saveSignalLog();
     }
   }
@@ -1738,17 +1739,32 @@
         return '<div style="display:flex;gap:4px;justify-content:space-between;"><span>' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()) + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ' ' + s.dir + '@' + fmt(s.price, 1) + '</span><span style="' + (s.status === 'win' ? 'color:var(--up);' : s.status === 'lose' ? 'color:var(--down);' : 'color:var(--text-muted);') + '">' + st + '</span></div>';
       }).join('');
       box.innerHTML = '<div style="margin-bottom:4px;">信号 ' + done.length + ' 次 · 胜率 ' + (done.length ? (win / done.length * 100).toFixed(1) + '%' : '--') + ' · 做多 ' + lw + '/' + longs.length + ' · 做空 ' + sw + '/' + shorts.length + ' · 待结算 ' + open + '</div>' +
-        '<div style="margin-bottom:4px;font-size:9.5px;color:var(--text-muted);">' + sceneStats() + '</div>' +
-        (rows || '<div>暂无信号，等待做多/做空信号出现…</div>') + '<div style="margin-top:3px;font-size:9px;color:var(--text-muted);">确认后 16 小时（4 根 4H）结算 · 去抖动防假信号 · 本地保存</div>';
+        '<div style="margin-bottom:4px;font-size:9.5px;color:var(--text-muted);line-height:1.6;">' + layerStats() + '</div>' +
+        (rows || '<div>暂无信号，等待做多/做空信号出现…</div>') + '<div style="margin-top:3px;font-size:9px;color:var(--text-muted);">确认后 16 小时（4 根 4H）结算 · 分层验证(日线/4H/30min) · 本地保存</div>';
     }
   }
-  function sceneStats() {
-    // 分场景统计：趋势市（ADX≥25）vs 震荡市（ADX<25）
-    const done = signalLog.filter(s => s.status === 'win' || s.status === 'lose');
-    const trend = done.filter(s => (s.adx || 0) >= 25), range = done.filter(s => (s.adx || 0) < 25 && (s.adx || 0) > 0);
-    const tw = trend.filter(s => s.status === 'win').length, rw = range.filter(s => s.status === 'win').length;
-    const pct = (a, b) => a.length ? (b / a.length * 100).toFixed(0) + '%' : '--';
-    return '趋势市(ADX≥25) 胜率 ' + pct(trend, tw) + '（' + tw + '/' + trend.length + '） · 震荡市 胜率 ' + pct(range, rw) + '（' + rw + '/' + range.length + '）';
+  function layerStats() {
+    // 分层验证：按战略层(日线)/战役层(4H)/战术层(30min)满足度统计胜率
+    const done = signalLog.filter(s => (s.status === 'win' || s.status === 'lose') && s.layers);
+    const pct = (arr, w) => arr.length ? (w / arr.length * 100).toFixed(0) + '%' : '--';
+    const w = arr => arr.filter(s => s.status === 'win').length;
+    // 做多：战略=日线向上(dayUp)，战役=4H回调(!h4Up)，战术=30min企稳(m30Up)
+    const longs = done.filter(s => s.dir === '做多');
+    const longFull = longs.filter(s => s.layers.dayUp === true && s.layers.h4Up === false && s.layers.m30Up === true);
+    const longBase = longs.filter(s => s.layers.dayUp === true && s.layers.h4Up === false && s.layers.m30Up !== true);
+    // 做空：战略=日线向下(!dayUp)，战役=4H反弹(h4Up)，战术=30min回落(!m30Up)
+    const shorts = done.filter(s => s.dir === '做空');
+    const shortFull = shorts.filter(s => s.layers.dayUp === false && s.layers.h4Up === true && s.layers.m30Up === false);
+    const shortBase = shorts.filter(s => s.layers.dayUp === false && s.layers.h4Up === true && s.layers.m30Up !== false);
+    let html = '';
+    if (longs.length) {
+      html += '<div>做多分层：<span style="color:var(--up);">三层全满足</span> ' + pct(longFull, w(longFull)) + '（' + w(longFull) + '/' + longFull.length + '） · 缺30min企稳 ' + pct(longBase, w(longBase)) + '（' + w(longBase) + '/' + longBase.length + '）</div>';
+    }
+    if (shorts.length) {
+      html += '<div>做空分层：<span style="color:var(--down);">三层全满足</span> ' + pct(shortFull, w(shortFull)) + '（' + w(shortFull) + '/' + shortFull.length + '） · 缺30min回落 ' + pct(shortBase, w(shortBase)) + '（' + w(shortBase) + '/' + shortBase.length + '）</div>';
+    }
+    if (!html) html = '<div>分层验证积累中：信号发出后自动记录日线/4H/30min三层状态，结算后对比「三层全满足 vs 缺30min」的胜率</div>';
+    return html;
   }
   function calcStateFromK(k) {
     // 通用：由 K 线数组计算指标状态
@@ -1987,7 +2003,7 @@
     else { lastCandidateSig = tSignal; sigStable = 1; }
     if (sigStable >= 3 && tSignal !== confSignal) confSignal = tSignal;
     // 信号验证记录：确认信号方向变化时记录/结算
-    if (lastSpot) recordSignal(confSignal, lastSpot, sTech && sTech.adxInfo ? sTech.adxInfo.adx : null);
+    if (lastSpot) recordSignal(confSignal, lastSpot, sTech && sTech.adxInfo ? sTech.adxInfo.adx : null, { dayUp: dayUp, h4Up: h4Up, m30Up: m30Up });
     // 信号推送提醒：确认信号出现做多/做空时，声音+系统通知+横幅
     if (lastSpot && (confSignal === '做多' || confSignal === '做空')) {
       const r = calcRisk(sTech, confSignal, lastSpot, score);
