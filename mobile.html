@@ -967,6 +967,9 @@
     const price = lastSpot;
     const out = { price: price, supports: [], resistances: [] };
     if (!price || !dailyKlinesUSD || dailyKlinesUSD.length < 30) return out;
+    // 计价单位一致性检查：日线须为美元计价（与现货同量级），沪金(人民币/克)则跳过，避免支撑阻力价格错乱
+    const lastDc = dailyKlinesUSD[dailyKlinesUSD.length - 1].c;
+    if (!lastDc || lastDc < price * 0.5 || lastDc > price * 2.0) return out;
     const lookback = Math.min(45, dailyKlinesUSD.length - 5);
     const recent = dailyKlinesUSD.slice(-lookback);
 
@@ -1035,6 +1038,9 @@
   function cycleSR(klines, price, emaList) {
     // 计算某周期的支撑/阻力：波段高低点 + 动态均线，统一按现价分类（上方=阻力、下方=支撑）
     if (!klines || klines.length < 20 || !price) return null;
+    // 计价单位一致性检查：该周期最新收盘价须与现货价(美元)同量级；沪金(人民币/克)会差4倍以上 → 跳过，避免价格错乱
+    const lastC = klines[klines.length - 1].c;
+    if (!lastC || lastC < price * 0.5 || lastC > price * 2.0) return null;
     const pts = [];
     const lookback = Math.min(30, klines.length - 4);
     const recent = klines.slice(-lookback);
@@ -1795,12 +1801,11 @@
     }
     let m5 = await fetchM5ViaEm();
     if (m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 30min'; }
-    // 2) 兜底：新浪沪金分时（白天/夜盘交易时段）
-    if (!h1Klines || !m5Klines) {
+    // 2) 兜底：新浪沪金分时（仅用于 4H 指标更新保持夜间/断源时指标持续；30min 需精确美元价格做止损，绝不用沪金人民币数据，避免 995 元/克混入美元/盎司）
+    if (!h1Klines) {
       const raw = await fetchSinaMinRaw();
       if (raw && raw.length) {
-        if (!h1Klines) { const h1 = buildBarsFromMin(raw, 60); if (h1 && h1.length >= 3) { h1Klines = h1; h1Source = '沪金分时聚合'; } }
-        if (!m5Klines) { const m5b = buildBarsFromMin(raw, 5); if (m5b && m5b.length >= 14) { m5Klines = m5b; m5Source = '沪金分时聚合'; } }
+        const h1 = buildBarsFromMin(raw, 60); if (h1 && h1.length >= 3) { h1Klines = h1; h1Source = '沪金分时聚合'; }
       }
     }
     // 3) 现价推进：用最新国际现货价更新最后一根 K（凌晨沪金停盘时指标仍持续推进）
