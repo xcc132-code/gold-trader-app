@@ -880,6 +880,32 @@
     } catch (e) { }
     return false;
   }
+  let m30HistLoaded = false; // Twelve Data 30min 历史底仓是否加载（现货口径，100+天）
+  async function loadThirtyMinHistory() {
+    // Twelve Data XAU/USD 30min（现货，100+天历史）→ 30min 指标更精准（现货口径 + 长历史）
+    // 免费版速率限制，10 分钟刷新一次；实时部分由现货价推进补齐延迟
+    try {
+      const r = await fetch('https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=30min&outputsize=5000&apikey=' + TWELVE_KEY);
+      const j = await r.json();
+      if (j && j.values && j.values.length > 200) {
+        const pad = n => String(n).padStart(2, '0');
+        const bars = j.values.slice().reverse().map(v => {
+          const utc = new Date(v.datetime.replace(' ', 'T') + 'Z'); // UTC → 本地(北京时间)
+          const date = utc.getFullYear() + '-' + pad(utc.getMonth() + 1) + '-' + pad(utc.getDate()) + ' ' + pad(utc.getHours()) + ':' + pad(utc.getMinutes());
+          return { date: date, o: +v.open, h: +v.high, l: +v.low, c: +v.close, v: 0 };
+        });
+        if (bars.length > 200) {
+          m5Klines = bars;
+          m5Source = 'TwelveData 30min(现货)';
+          m30HistLoaded = true;
+          if (m5Klines) m5State = calcStateFromK(m5Klines);
+          renderPredictionM();
+          return true;
+        }
+      }
+    } catch (e) { }
+    return false;
+  }
   function trendOf(s) {
     // 单周期趋势方向：价格 vs SMA50/EMA21 + MACD + ADX
     if (!s || s.lastClose == null) return { dir: '震荡', color: 'var(--text-muted)' };
@@ -1810,8 +1836,8 @@
       if (price < last.l) last.l = price;
     };
     if (h1Source && h1Source.indexOf('沪金') !== 0) push(h1Klines);   // 美元源（COMEX/TwelveData）推进现价
-    if (m5Source === 'COMEX 30min' && m5Klines && m5Klines.length) {
-      // 30min：COMEX 休市停更时，用 24 小时现货价每 30 分钟开新 K 线，保证预测值持续更新（天亮 COMEX 恢复后自动被真实数据覆盖）
+    if (m5Source && m5Source.indexOf('沪金') !== 0 && m5Klines && m5Klines.length) {
+      // 30min（美元源：TwelveData 30min现货 / COMEX 30min）：数据停更时用 24 小时现货价每 30 分钟开新 K 线，保证预测值持续更新
       const last = m5Klines[m5Klines.length - 1];
       const lastTs = new Date(String(last.date).replace(' ', 'T')).getTime();
       const nowTs = Date.now();
@@ -1820,11 +1846,11 @@
         const pad = n => String(n).padStart(2, '0');
         const dateStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
         m5Klines.push({ date: dateStr, o: last.c, h: price, l: price, c: price, v: 0 });
-        if (m5Klines.length > 500) m5Klines.shift();
+        if (m5Klines.length > 5200) m5Klines.shift();
       } else {
         push(m5Klines);
       }
-    } else if (m5Source === 'COMEX 30min') {
+    } else if (m5Source && m5Source.indexOf('沪金') !== 0) {
       push(m5Klines);
     }
   }
@@ -1846,7 +1872,7 @@
       h1Stale = false; // 东财备用源失败，但主数据（Twelve Data/旧 K）仍可用，不算暂不可用
     }
     let m5 = await fetchM5ViaEm();
-    if (m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 30min'; }
+    if (!m30HistLoaded && m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 30min'; }
     // 2) 兜底：新浪沪金分时（仅用于 4H 指标更新保持夜间/断源时指标持续；30min 需精确美元价格做止损，绝不用沪金人民币数据，避免 995 元/克混入美元/盎司）
     if (!h1Klines) {
       const raw = await fetchSinaMinRaw();
@@ -2736,6 +2762,8 @@
   setInterval(fetchMacro, 600000);           // 10 分钟刷新
   loadWeeklyTrend();                         // 周线大趋势（XAUUSD 日线聚合周线）
   setInterval(loadWeeklyTrend, 600000);      // 10 分钟刷新
+  loadThirtyMinHistory();                    // Twelve Data 30min 现货历史底仓（100+天，30min指标更准）
+  setInterval(loadThirtyMinHistory, 600000); // 10 分钟刷新（免费版速率限制）
   renderVerify();
   // 请求系统通知权限（信号推送提醒用，做多/做空信号出现时弹通知）
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
