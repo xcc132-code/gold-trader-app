@@ -1893,6 +1893,22 @@
     if (sma != null) sc += s.lastClose > sma ? 4 : -4;
     return Math.max(15, Math.min(88, sc));
   }
+  function predictProb(state) {
+    // 某周期的看多概率（0-100）：趋势偏离强度 + 金叉 + RSI + ADX方向，三周期独立可比（与顶部预测值同源）
+    if (!state) return null;
+    let sc = 50;
+    if (state.ema21 != null && state.lastClose != null) {
+      const dev21 = (state.lastClose - state.ema21) / state.ema21 * 100;
+      sc += Math.max(-25, Math.min(25, dev21 * 5));
+    }
+    if (state.ema9 != null && state.ema21 != null) {
+      const dev9 = (state.ema9 - state.ema21) / state.ema21 * 100;
+      sc += Math.max(-15, Math.min(15, dev9 * 10));
+    }
+    if (state.rsi != null) sc += (state.rsi - 50) * 0.3;
+    if (state.adxInfo) sc += state.adxInfo.pdi > state.adxInfo.mdi ? 5 : -5;
+    return Math.max(5, Math.min(95, Math.round(sc)));
+  }
   function calcOBV(k, p = 20) {
     // 量价确认：OBV 高于其 20 期均值 = 资金流入
     if (!k || k.length < p + 1) return null;
@@ -1921,33 +1937,9 @@
       if (curBull && dayBull) reso = 'bull';
       else if (!curBull && !dayBull) reso = 'bear';
     }
-    // 多空预测值（周期敏感版）：当前周期趋势为主（连续偏离强度），日线趋势降为背景方向
-    let score = 50;
-    // 当前周期趋势强度（连续偏离幅度，随周期变化；系数×5封顶±25，让1-5%偏离落在线性区）
-    if (sTech && sTech.ema21 != null && sTech.lastClose != null) {
-      const dev21 = (sTech.lastClose - sTech.ema21) / sTech.ema21 * 100;
-      score += Math.max(-25, Math.min(25, dev21 * 5));
-    }
-    // 当前周期 EMA9 vs EMA21（金叉/死叉强度，连续）
-    if (sTech && sTech.ema9 != null && sTech.ema21 != null) {
-      const dev9 = (sTech.ema9 - sTech.ema21) / sTech.ema21 * 100;
-      score += Math.max(-15, Math.min(15, dev9 * 10));
-    }
-    // 当前周期 RSI 动量
-    if (sTech && sTech.rsi != null) score += (sTech.rsi - 50) * 0.3;
-    // 日线趋势（背景方向，权重降低，不随周期变化）
-    if (indicatorState && indicatorState.ema9 != null && indicatorState.lastClose != null) {
-      score += indicatorState.lastClose > indicatorState.ema9 ? 6 : -6;
-    }
-    // ADX 方向（随周期变化）
-    if (sTech && sTech.adxInfo) score += sTech.adxInfo.pdi > sTech.adxInfo.mdi ? 5 : -5;
-    // 宏观
-    if (macroState) {
-      if (macroState.usdChg < 0) score += 3; else score -= 3;
-      if (macroState.rateChg > 0) score += 2; else score -= 2;
-    }
-    score = clamp(score, 10, 90);
-    const bullPct = Math.round(score);
+    // 多空预测值（三周期独立概率，与验证记录同源）
+    const bullPct = predictProb(sTech) != null ? predictProb(sTech) : 50;
+    const score = bullPct; // 兼容后续引用（calcRisk/renderRisk/pBear 等）
     const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     // 交易信号：三周期分层择时（日线定方向 + 4H逆向择时），见下方 tSignal
     const baseSc = scoreFrom(sTech);
@@ -1960,10 +1952,10 @@
       ? h1State.lastClose > h1State.ema21 : null;
     const m30Up = (m5State && m5State.ema21 != null && m5State.lastClose != null)
       ? m5State.lastClose > m5State.ema21 : null;
-    // 三周期看多概率（scoreFrom 技术指标综合打分 15-88，作为"看多概率%"记录，供验证记录总结规律）
-    const dayProb = scoreFrom(indicatorState);
-    const h4Prob = scoreFrom(h1State);
-    const m30Prob = scoreFrom(m5State);
+    // 三周期看多概率（predictProb 周期独立概率 0-100，与顶部预测值同源，供验证记录总结规律）
+    const dayProb = predictProb(indicatorState);
+    const h4Prob = predictProb(h1State);
+    const m30Prob = predictProb(m5State);
     const dtTag = document.getElementById('dayTrendTag');
     if (dtTag) {
       let combo, color, bg;
