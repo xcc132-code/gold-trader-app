@@ -1894,20 +1894,22 @@
     return Math.max(15, Math.min(88, sc));
   }
   function predictProb(state) {
-    // 某周期的看多概率（0-100）：趋势偏离强度 + 金叉 + RSI + ADX方向，三周期独立可比（与顶部预测值同源）
+    // 某周期的看多概率（0-100）：偏离EMA21用ATR标准化(不同周期可比)，金叉 + RSI + ADX方向
+    // ATR标准化解决"日线绝对偏离大(4%+)导致封顶95、短周期偏离小(0.1%)几乎不动"的尺度问题
     if (!state) return null;
+    const atr = (state.atr && state.atr > 0) ? state.atr : (state.ema21 || 1) * 0.01;
     let sc = 50;
     if (state.ema21 != null && state.lastClose != null) {
-      const dev21 = (state.lastClose - state.ema21) / state.ema21 * 100;
-      sc += Math.max(-25, Math.min(25, dev21 * 5));
+      const devAtr = (state.lastClose - state.ema21) / atr;
+      sc += Math.max(-22, Math.min(22, devAtr * 4));
     }
     if (state.ema9 != null && state.ema21 != null) {
-      const dev9 = (state.ema9 - state.ema21) / state.ema21 * 100;
-      sc += Math.max(-15, Math.min(15, dev9 * 10));
+      const dev9Atr = (state.ema9 - state.ema21) / atr;
+      sc += Math.max(-12, Math.min(12, dev9Atr * 3));
     }
     if (state.rsi != null) sc += (state.rsi - 50) * 0.3;
     if (state.adxInfo) sc += state.adxInfo.pdi > state.adxInfo.mdi ? 5 : -5;
-    return Math.max(5, Math.min(95, Math.round(sc)));
+    return Math.max(3, Math.min(97, Math.round(sc)));
   }
   function calcOBV(k, p = 20) {
     // 量价确认：OBV 高于其 20 期均值 = 资金流入
