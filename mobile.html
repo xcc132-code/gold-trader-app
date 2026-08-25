@@ -1810,7 +1810,23 @@
       if (price < last.l) last.l = price;
     };
     if (h1Source && h1Source.indexOf('沪金') !== 0) push(h1Klines);   // 美元源（COMEX/TwelveData）推进现价
-    if (m5Source === 'COMEX 30min') push(m5Klines);
+    if (m5Source === 'COMEX 30min' && m5Klines && m5Klines.length) {
+      // 30min：COMEX 休市停更时，用 24 小时现货价每 30 分钟开新 K 线，保证预测值持续更新（天亮 COMEX 恢复后自动被真实数据覆盖）
+      const last = m5Klines[m5Klines.length - 1];
+      const lastTs = new Date(String(last.date).replace(' ', 'T')).getTime();
+      const nowTs = Date.now();
+      if (!isNaN(lastTs) && nowTs - lastTs >= 30 * 60000) {
+        const d = new Date(nowTs);
+        const pad = n => String(n).padStart(2, '0');
+        const dateStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        m5Klines.push({ date: dateStr, o: last.c, h: price, l: price, c: price, v: 0 });
+        if (m5Klines.length > 500) m5Klines.shift();
+      } else {
+        push(m5Klines);
+      }
+    } else if (m5Source === 'COMEX 30min') {
+      push(m5Klines);
+    }
   }
   async function refreshH1() {
     // ===== 国际金优先三重保障（解决夜间沪金停盘指标不更新） =====
