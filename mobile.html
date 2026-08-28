@@ -2532,6 +2532,7 @@
   function ecoSimplify(t) {
     // 简化事件名 + 重要性星级
     if (t.includes('利率决议') || t.includes('FOMC') || t.includes('联邦基金利率')) return { name: '美联储利率决议', star: 5 };
+    if (t.includes('讲话') || t.includes('演讲') || t.includes('发言') || t.includes('证词') || t.includes('杰克逊')) return { name: '美联储官员讲话', star: 5 };
     if (t.includes('非农')) return { name: '非农就业报告', star: 4 };
     if (t.includes('CPI') || t.includes('消费者物价')) return { name: 'CPI 消费者物价指数', star: 4 };
     if (t.includes('PCE') || t.includes('个人消费支出物价')) return { name: 'PCE 物价指数', star: 3 };
@@ -2542,11 +2543,18 @@
   }
   async function loadFutureCalendar() {
     // 东财经济数据：分页查未来美国重磅数据（非农/CPI/FOMC/PCE/GDP/国债拍卖）
-    const KEY = ['非农', 'CPI', '消费者物价', '利率决议', 'FOMC', '联邦基金', 'GDP', '国内生产', 'PCE', '个人消费', '国债', '拍卖', '失业率'];
+    const KEY = ['非农', 'CPI', '消费者物价', '利率决议', 'FOMC', '联邦基金', 'GDP', '国内生产', 'PCE', '个人消费', '国债', '拍卖', '失业率', '讲话', '演讲', '发言', '证词', '杰克逊', '央行', '年会'];
     const EXCLUDE = ['持仓', '管理基金', '未平仓', '报告头寸', '期货', '期权', '库存', '原油', '粗钢', '红皮书', 'MBA', '外国投资者', '资本流动', '证券', '二手车', '能源', '食品', '住房', '住宅', '工业产出', '产能', '出口价格', '进口价格'];
     const now = new Date();
     const tstr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    // 手动维护的"央行讲话/重大事件"清单（东财经济数据接口不含"讲话/发布会/年会"类事件，此处补充）
+    // 美联储主席讲话、杰克逊霍尔年会等提前公布但东财不收录；需定期更新
+    const FED_EVENTS = [
+      { date: '2026-08-28', time: '22:00', name: '美联储主席沃什·杰克逊霍尔演讲', star: 5 },
+    ];
     const events = [];
+    // 合并手动"央行讲话"清单（过滤已过期）
+    FED_EVENTS.forEach(e => { if (e.date >= tstr) events.push(e); });
     for (let pg = 1; pg <= 3; pg++) {
       const flt = encodeURIComponent("(DAT_PUBLISHDATE>'" + tstr + " 00:00:00')");
       const cb = '_fc_' + Date.now() + '_' + pg;
