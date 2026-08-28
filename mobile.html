@@ -2547,14 +2547,13 @@
     const EXCLUDE = ['持仓', '管理基金', '未平仓', '报告头寸', '期货', '期权', '库存', '原油', '粗钢', '红皮书', 'MBA', '外国投资者', '资本流动', '证券', '二手车', '能源', '食品', '住房', '住宅', '工业产出', '产能', '出口价格', '进口价格'];
     const now = new Date();
     const tstr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    // 手动维护的"央行讲话/重大事件"清单（东财经济数据接口不含"讲话/发布会/年会"类事件，此处补充）
-    // 美联储主席讲话、杰克逊霍尔年会等提前公布但东财不收录；需定期更新
-    const FED_EVENTS = [
-      { date: '2026-08-28', time: '22:00', name: '美联储主席沃什·杰克逊霍尔演讲', star: 5 },
-    ];
     const events = [];
-    // 合并手动"央行讲话"清单（过滤已过期）
-    FED_EVENTS.forEach(e => { if (e.date >= tstr) events.push(e); });
+    // 读取手动维护的"央行讲话/发布会"清单（data/fed_events.json，东财经济数据接口不含此类事件）
+    try {
+      const fr = await fetch('data/fed_events.json?_=' + Date.now());
+      const fedList = await fr.json();
+      if (Array.isArray(fedList)) fedList.forEach(e => { if (e.date >= tstr) events.push(e); });
+    } catch (e) {}
     for (let pg = 1; pg <= 3; pg++) {
       const flt = encodeURIComponent("(DAT_PUBLISHDATE>'" + tstr + " 00:00:00')");
       const cb = '_fc_' + Date.now() + '_' + pg;
