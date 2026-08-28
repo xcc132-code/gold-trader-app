@@ -2541,6 +2541,41 @@
     if (t.includes('失业率')) return { name: '失业率', star: 3 };
     return null;
   }
+  async function loadJin10Events() {
+    // 金十财经日历（含"央行讲话/央行动态"，东财没有），多 CORS 代理容错；失败返回空数组回退手动清单
+    const KEY = ['讲话', '演讲', '发言', '证词', '杰克逊', '美联储', '央行'];
+    const events = [];
+    const proxies = [
+      u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+      u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+      u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+    ];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(Date.now() + i * 86400000);
+      const ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+      const url = 'https://cdn-rili.jin10.com/web_data/' + ds + '/economics.json';
+      for (const mk of proxies) {
+        try {
+          const ctrl = new AbortController();
+          const to = setTimeout(() => ctrl.abort(), 6000);
+          const r = await fetch(mk(url), { signal: ctrl.signal });
+          clearTimeout(to);
+          if (!r.ok) continue;
+          const j = await r.json();
+          const list = (j && j.data && j.data.economics) ? j.data.economics : (Array.isArray(j) ? j : (j && j.data ? j.data : []));
+          for (const it of list) {
+            const name = it.name || it.title || '';
+            const country = it.country || it.country_cn || '';
+            if (country.indexOf('美国') >= 0 && KEY.some(k => name.indexOf(k) >= 0)) {
+              events.push({ date: ds.replace(/\//g, '-'), time: (it.time || '').slice(0, 5), name: name, star: (it.star || it.importance || 4) });
+            }
+          }
+          break;
+        } catch (e) {}
+      }
+    }
+    return events;
+  }
   async function loadFutureCalendar() {
     // 东财经济数据：分页查未来美国重磅数据（非农/CPI/FOMC/PCE/GDP/国债拍卖）
     const KEY = ['非农', 'CPI', '消费者物价', '利率决议', 'FOMC', '联邦基金', 'GDP', '国内生产', 'PCE', '个人消费', '国债', '拍卖', '失业率', '讲话', '演讲', '发言', '证词', '杰克逊', '央行', '年会'];
@@ -2548,12 +2583,18 @@
     const now = new Date();
     const tstr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     const events = [];
-    // 读取手动维护的"央行讲话/发布会"清单（data/fed_events.json，东财经济数据接口不含此类事件）
-    try {
-      const fr = await fetch('data/fed_events.json?_=' + Date.now());
-      const fedList = await fr.json();
-      if (Array.isArray(fedList)) fedList.forEach(e => { if (e.date >= tstr) events.push(e); });
-    } catch (e) {}
+    // 1) 优先金十（央行讲话/央行动态自动更新）
+    const jin10 = await loadJin10Events();
+    if (jin10.length) {
+      jin10.forEach(e => { if (e.date >= tstr) events.push(e); });
+    } else {
+      // 2) 金十失败 → 兜底手动 fed_events.json
+      try {
+        const fr = await fetch('data/fed_events.json?_=' + Date.now());
+        const fedList = await fr.json();
+        if (Array.isArray(fedList)) fedList.forEach(e => { if (e.date >= tstr) events.push(e); });
+      } catch (e) {}
+    }
     for (let pg = 1; pg <= 3; pg++) {
       const flt = encodeURIComponent("(DAT_PUBLISHDATE>'" + tstr + " 00:00:00')");
       const cb = '_fc_' + Date.now() + '_' + pg;
