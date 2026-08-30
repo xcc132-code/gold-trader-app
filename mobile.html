@@ -1180,6 +1180,7 @@
   let h1Klines = null;       // 1H K线队列（COMEX 国际金优先）
   let h1RawKlines = null;    // 原始 1H K线（量价分析"1H找时机"用，含成交量）
   let m5Klines = null;       // 30m K线队列（COMEX 国际金优先）
+  let m5VolKlines = null;    // COMEX 30min K线（含真实成交量，供"30min买卖量"用；TwelveData现货无成交量）
   let m5Source = '';         // 30m 数据源标记
   let h1Stale = false;       // K线源暂不可用标记（仅现价推进）
   let lastSpot = null;       // 最新国际现货金价（现价推进用）
@@ -1872,6 +1873,7 @@
       h1Stale = false; // 东财备用源失败，但主数据（Twelve Data/旧 K）仍可用，不算暂不可用
     }
     let m5 = await fetchM5ViaEm();
+    if (m5 && m5.length >= 14) m5VolKlines = m5;  // COMEX 30min 含真实成交量（TwelveData 现货 v=0，不能用）
     if (!m30HistLoaded && m5 && m5.length >= 14) { m5Klines = m5; m5Source = 'COMEX 30min'; }
     // 2) 兜底：新浪沪金分时（仅用于 4H 指标更新保持夜间/断源时指标持续；30min 需精确美元价格做止损，绝不用沪金人民币数据，避免 995 元/克混入美元/盎司）
     if (!h1Klines) {
@@ -2290,6 +2292,19 @@
       const uRatio = (uc.v || 0) / (uAvg || 1);
       if (uChg > 0 && uRatio > 1.3) { holdRows.push(renderBasisRow('H1放量拉升·多头动能（量比' + uRatio.toFixed(2) + '）', '利多')); holdScore += 1; }
       else if (uChg < 0 && uRatio > 1.3) { holdRows.push(renderBasisRow('H1放量下跌·空头动能（量比' + uRatio.toFixed(2) + '）', '利空')); holdScore -= 1; }
+    }
+    // 30min 买卖成交量（COMEX 期货真实成交量，按 K 线涨跌方向分为买量/卖量；XAUUSD 现货无统一交易所成交量）
+    if (m5VolKlines && m5VolKlines.length >= 4) {
+      const wb = m5VolKlines.slice(-8);   // 近 8 根 30min ≈ 4 小时
+      let buy = 0, sell = 0;
+      for (const k of wb) { const v = k.v || 0; if (k.c >= k.o) buy += v; else sell += v; }
+      if (buy + sell > 0) {
+        const buyPct = buy / (buy + sell) * 100;
+        const sent = buyPct >= 55 ? '利多' : (buyPct <= 45 ? '利空' : '中性');
+        const fv = x => x >= 10000 ? (x / 10000).toFixed(1) + '万手' : Math.round(x) + '手';
+        holdRows.push(renderBasisRow('30min买卖量 买 ' + fv(buy) + ' / 卖 ' + fv(sell) + ' · 买盘占比 ' + buyPct.toFixed(0) + '%', sent));
+        holdScore += sent === '利多' ? 1 : (sent === '利空' ? -1 : 0);
+      }
     }
     if (holdingsData && holdingsData.length >= 2) {
       // 取最新两条有库存的记录
