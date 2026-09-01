@@ -254,6 +254,12 @@
           <span class="data-impact tag-up" id="mNfpTag">回落</span>
         </div>
         <div class="data-row">
+          <span class="data-name">ADP 就业</span>
+          <span class="data-val" id="mAdp">--</span>
+          <span class="data-fc" id="mAdpFc">前值 --</span>
+          <span class="data-impact tag-gold" id="mAdpTag">待公布</span>
+        </div>
+        <div class="data-row">
           <span class="data-name">美联储利率</span>
           <span class="data-val" id="mRate">3.75%</span>
           <span class="data-fc" id="mRateFc">7/30 决议维持</span>
@@ -2639,11 +2645,15 @@
     const cpi = get(['核心CPI:季调:当月同比', '核心CPI:非季调:当月同比', 'CPI:非季调:同比']);
     const rate = get('联邦基金利率目标:上限');
     const pce = get(['PCE物价指数:季调:同比', '核心PCE物价指数:同比']);
+    const adp = get('ADP就业人数');
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    // ADP 单位是"人"（东财），转成"万"显示（如 44000 → 4.4万）
+    const fvW = x => (x == null || x === '' || x === 'None') ? '--' : (Math.abs(+x) >= 10000 ? (+x / 10000).toFixed(1) + '万' : String(x));
     if (nfp) { set('mNfp', fmtE(nfp.actual)); set('mNfpFc', '前值 ' + fmtE(nfp.prev)); set('mNfpTag', nfp.actual < nfp.prev ? '回落' : '回升'); }
     if (cpi) { set('mCpi', fmtE(cpi.actual) + '%'); set('mCpiFc', '前值 ' + fmtE(cpi.prev) + '%'); set('mCpiTag', cpi.actual < cpi.prev ? '降温' : '升温'); }
     if (rate) { set('mRate', fmtE(rate.actual) + '%'); set('mRateFc', '7/30 决议' + (rate.actual === rate.prev ? '维持' : '调整')); }
     if (pce) { set('mPce', fmtE(pce.actual) + '%'); set('mPceFc', '前值 ' + fmtE(pce.prev) + '%'); set('mPceTag', pce.actual < pce.prev ? '降温' : '升温'); }
+    if (adp) { set('mAdp', fvW(adp.actual)); set('mAdpFc', '前值 ' + fvW(adp.prev)); set('mAdpTag', adp.actual < adp.prev ? '回落' : '回升'); }
   }
   function renderEcoFutureM(items) {
     const c = document.getElementById('mEcoFuture');
@@ -2706,9 +2716,9 @@
     } catch (e) {}
   }
   loadEcoCalendarM();
-  setInterval(loadEcoCalendarM, 600000);
+  setInterval(loadEcoCalendarM, 120000);      // 经济数据 2 分钟刷新（数据公布后更快反映）
   loadFutureCalendar();                       // 财经日历（东财分页，未来美国重磅数据）
-  setInterval(loadFutureCalendar, 600000);   // 10 分钟刷新
+  setInterval(loadFutureCalendar, 600000);    // 10 分钟刷新（未来日程变化低频，10分钟足够）
 
   /* ================================================================
      消息雷达（新浪 7x24 快讯，JSONP 跨域）
