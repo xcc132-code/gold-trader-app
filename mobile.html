@@ -2665,18 +2665,38 @@
         <span style="width:52px;text-align:right;font-family:var(--font-mono);color:${it.actual != null ? 'var(--up)' : 'var(--text-secondary)'};">${it.actual != null ? fmtE(it.actual) : '--'}</span>
       </div>`).join('');
   }
+  const ECO_CACHE_KEY = 'goldEcoCache';
+  function loadEcoCache() {
+    // 读本地缓存（localStorage），存最近 200 条已发布经济数据
+    try { const raw = localStorage.getItem(ECO_CACHE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+    return null;
+  }
+  function saveEcoCache(published) {
+    // 写本地缓存：只保留最近 200 条，避免无限膨胀
+    try {
+      const trimmed = (published || []).slice(0, 200);
+      localStorage.setItem(ECO_CACHE_KEY, JSON.stringify({ published: trimmed, updated: Date.now() }));
+    } catch (e) {}
+  }
   async function loadEcoCalendarM() {
     try {
-      let json = null;
-      try { const r = await fetch('data/eco_calendar.json?_=' + Date.now()); json = await r.json(); } catch (e) {}
-      if (!json) json = EMBEDDED_ECO;  // 本地/独立运行兜底
-      ecoPublishedM = json.published || [];
+      // 1) 优先本地缓存（localStorage）；无缓存才读静态 eco_calendar.json 兜底（首次/清缓存后）
+      const cache = loadEcoCache();
+      let json = (cache && cache.published && cache.published.length) ? cache : null;
+      if (json) {
+        ecoPublishedM = json.published;
+      } else {
+        try { const r = await fetch('data/eco_calendar.json?_=' + Date.now()); json = await r.json(); } catch (e) {}
+        if (!json) json = EMBEDDED_ECO;  // 本地/独立运行兜底
+        ecoPublishedM = json.published || [];
+        saveEcoCache(ecoPublishedM);  // 首次兜底后写入缓存（含 ADP 历史值）
+        ecoFutureM = json.future || []; renderEcoFutureM(ecoFutureM);
+      }
       dataFresh.eco = Date.now();
       renderEcoCardsM(ecoPublishedM);
-      ecoFutureM = json.future || []; renderEcoFutureM(ecoFutureM);
       renderDataPage();
       const pill = document.getElementById('mEcoPill');
-      if (pill) pill.textContent = '已同步 ' + (json.updated || '').slice(5, 16);
+      if (pill) pill.textContent = '已同步 ' + (json && json.updated ? String(json.updated).slice(5, 16) : '');
       renderPredictionM();
     } catch (e) {}
     try {
@@ -2700,10 +2720,14 @@
         const published = mapped.filter(x => x.actual != null);
         const future = mapped.filter(x => x.actual == null);
         if (published.length) {
-          // 合并到已发布列表（去重）并刷新四卡 + 预测页经济维度
+          // 合并到已发布列表（去重）→ 写回缓存 → 刷新四卡 + 预测页经济维度
           const seen = new Set(ecoPublishedM.map(p => p.title));
-          published.forEach(p => { if (!seen.has(p.title)) ecoPublishedM.push(p); });
-          ecoPublishedM.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          let changed = false;
+          published.forEach(p => { if (!seen.has(p.title)) { ecoPublishedM.push(p); seen.add(p.title); changed = true; } });
+          if (changed) {
+            ecoPublishedM.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            saveEcoCache(ecoPublishedM);  // 写回本地缓存
+          }
           renderEcoCardsM(ecoPublishedM);
           renderDataPage();
           renderPredictionM();
