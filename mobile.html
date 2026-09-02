@@ -1067,54 +1067,91 @@
     out.supports = merge(sup, false);     // 支撑降序（离现价最近的在前）
     return out;
   }
-  function cycleSR(klines, price, emaList) {
-    // 计算某周期的支撑/阻力：波段高低点 + 动态均线，统一按现价分类（上方=阻力、下方=支撑）
+  function cycleSR(klines, price, opts) {
+    // 支撑/阻力：有效波段结构位（严格分形 + 收盘价失效过滤），统一按现价分类（上方=阻力、下方=支撑）
+    // opts: { lookback, mergePct } —— 各周期分层 lookback（时间跨度）与共振合并容差（价位区域）
+    opts = opts || {};
+    const lookback = opts.lookback || 60;
+    const mergePct = opts.mergePct || 0.004;
     if (!klines || klines.length < 20 || !price) return null;
     // 计价单位一致性检查：该周期最新收盘价须与现货价(美元)同量级；沪金(人民币/克)会差4倍以上 → 跳过，避免价格错乱
     const lastC = klines[klines.length - 1].c;
     if (!lastC || lastC < price * 0.5 || lastC > price * 2.0) return null;
-    const pts = [];
-    const lookback = Math.min(30, klines.length - 4);
     const recent = klines.slice(-lookback);
+    const winHi = Math.max(...recent.map(x => x.h));
+    const winLo = Math.min(...recent.map(x => x.l));
+    const rng = (winHi - winLo) || price * 0.02;
+
+    // 1. 严格分形（> 而非 >=，左右各2根严格突破，避免平顶/平底重复识别）
+    const swings = [];
     for (let i = 2; i < recent.length - 2; i++) {
       const bar = recent[i];
-      const win = recent.slice(i - 2, i + 3);
-      if (bar.h >= Math.max(...win.map(x => x.h))) pts.push({ level: bar.h, label: '波段高' });
-      if (bar.l <= Math.min(...win.map(x => x.l))) pts.push({ level: bar.l, label: '波段低' });
+      const lh = Math.max(recent[i - 2].h, recent[i - 1].h);
+      const rh = Math.max(recent[i + 1].h, recent[i + 2].h);
+      if (bar.h > lh && bar.h > rh) swings.push({ level: bar.h, type: 'high', idx: i });
+      const ll = Math.min(recent[i - 2].l, recent[i - 1].l);
+      const rl = Math.min(recent[i + 1].l, recent[i + 2].l);
+      if (bar.l < ll && bar.l < rl) swings.push({ level: bar.l, type: 'low', idx: i });
     }
-    const closes = klines.map(x => x.c);
-    for (const e of emaList) {
-      if (closes.length >= e.p) {
-        const v = calcEMA(closes, e.p);
-        if (v != null && isFinite(v)) pts.push({ level: v, label: e.label });
+
+    // 2. 失效过滤：波段高被后续【收盘价】突破才失效、波段低被后续收盘价跌破才失效（容忍盘中假突破，保留真结构位）
+    const pts = [];
+    for (const sw of swings) {
+      let broken = false;
+      if (sw.type === 'high') {
+        for (let j = sw.idx + 1; j < recent.length; j++) {
+          if (recent[j].c > sw.level) { broken = true; break; }
+        }
+      } else {
+        for (let j = sw.idx + 1; j < recent.length; j++) {
+          if (recent[j].c < sw.level) { broken = true; break; }
+        }
       }
+      if (!broken) pts.push({ level: sw.level, label: sw.type === 'high' ? '波段高' : '波段低' });
     }
+
+    // 3. 按现价分类：上方=阻力、下方=支撑
     const res = [], sup = [];
     pts.forEach(x => {
-      if (x.level > price * 1.0005) res.push(x);
-      else if (x.level < price * 0.9995) sup.push(x);
+      if (x.level > price * 1.001) res.push(x);
+      else if (x.level < price * 0.999) sup.push(x);
     });
-    const near = (a, b) => Math.abs(a - b) < price * 0.006;
+
+    // 4. 单边补位：某侧无有效结构位时，用斐波那契扩展预测目标位兜底（避免创新高/新低时该侧为空）
+    if (!res.length) {
+      res.push({ level: winHi + rng * 0.382, label: '斐波扩展0.382' });
+      res.push({ level: winHi + rng * 0.618, label: '斐波扩展0.618' });
+    }
+    if (!sup.length) {
+      sup.push({ level: winLo - rng * 0.382, label: '斐波扩展0.382' });
+      sup.push({ level: winLo - rng * 0.618, label: '斐波扩展0.618' });
+    }
+
+    // 5. 共振合并（容差按周期分层，同一价位区域归并，同标签去重，避免"波段高/低出现好几次"）
+    const near = (a, b) => Math.abs(a - b) < price * mergePct;
     const merge = (arr, asc) => {
       arr.sort((a, b) => asc ? a.level - b.level : b.level - a.level);
       const out = [];
       for (const x of arr) {
         const hit = out.find(r => near(r.level, x.level));
-        if (hit) hit.label += '｜' + x.label;
-        else out.push({ level: x.level, label: x.label });
+        if (hit) {
+          if (!hit.label.split('｜').includes(x.label)) hit.label += '｜' + x.label;
+        } else {
+          out.push({ level: x.level, label: x.label });
+        }
       }
       return out;
     };
-    return { resistances: merge(res, true).slice(0, 2), supports: merge(sup, false).slice(0, 2) };
+    return { resistances: merge(res, true).slice(0, 3), supports: merge(sup, false).slice(0, 3) };
   }
   function renderSRZones() {
     const box = document.getElementById('newsSRBox');
     if (!box) return;
     const price = lastSpot;
     if (!price) { box.innerHTML = '<div class="data-row" style="opacity:0.6;"><span style="flex:1;color:var(--text-muted);">价格加载中…</span></div>'; return; }
-    const daily = cycleSR(dailyKlinesUSD, price, [{ p: 20, label: 'EMA20' }, { p: 60, label: 'EMA60' }]);
-    const h4 = cycleSR(h1Klines, price, [{ p: 21, label: 'EMA21' }, { p: 50, label: 'EMA50' }]);
-    const m30 = cycleSR(m5Klines, price, [{ p: 21, label: 'EMA21' }]);
+    const daily = cycleSR(dailyKlinesUSD, price, { lookback: 60, mergePct: 0.006 });
+    const h4 = cycleSR(h1Klines, price, { lookback: 90, mergePct: 0.004 });
+    const m30 = cycleSR(m5Klines, price, { lookback: 90, mergePct: 0.002 });
     const block = (icon, title, tag, color, sr) => {
       if (!sr || (!sr.resistances.length && !sr.supports.length)) return '';
       let h = '<div style="margin:7px 0 3px;font-size:10.5px;font-weight:700;color:' + color + ';">' + icon + ' ' + title +
