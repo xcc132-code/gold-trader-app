@@ -403,7 +403,7 @@
         </div>
         <div id="pNewsBasis" style="display:flex;flex-direction:column;gap:6px;">
           <div class="data-row" style="font-size:10px;opacity:0.7;color:var(--text-muted);">
-            <span style="flex:1;">最新快讯</span><span style="width:60px;text-align:right;">方向</span>
+            <span style="flex:1;">重要数据 · 快讯</span><span style="width:60px;text-align:right;">方向</span>
           </div>
           <div class="data-row"><span style="flex:1;color:var(--text-muted);">消息同步中…</span></div>
         </div>
@@ -2300,9 +2300,35 @@
       techMeta.textContent = '指标原始值：RSI ' + (s2.rsi != null ? s2.rsi.toFixed(1) : '--') + ' · ADX ' + (s2.adxInfo ? s2.adxInfo.adx.toFixed(1) : '--') + ' · 收盘 ' + (s2.lastClose != null ? fmt(s2.lastClose, 1) : '--') + ' · 数据源 ' + srcTag + (klineTag ? ' · ' + klineTag : '');
     }
 
-    // 4) 维度三：消息面依据
+    // 4) 维度三：消息面依据（重要经济数据事件 + 新闻快讯，硬数据客观计分）
     let newsRows = [], newsScore = 0;
+    const todayStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    const ecoEventKeys = ['非农', '失业率', 'CPI', 'PCE', '利率决议', '联邦基金', 'ADP', '初请', 'GDP', '零售'];
+    // 4a) 近期重要经济数据（非农/CPI/FOMC 等硬数据，客观 actual vs prev，公布后立即体现、绝不延迟）
+    const recentEco = (ecoPublishedM || [])
+      .filter(p => p.actual != null && ecoEventKeys.some(k => (p.title || '').includes(k)))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+      .slice(0, 3);
+    if (recentEco.length) {
+      newsRows.push('<div style="font-size:9px;color:var(--gold-soft);font-weight:700;padding-top:2px;">📌 近期重要经济数据</div>');
+      recentEco.forEach(p => {
+        const d = ecoDir(p);
+        const tag = (p.date || '') === todayStr ? '今日 ' : ((p.date || '').slice(5) + ' ');
+        newsRows.push(renderBasisRow(tag + ecoShort(p.title) + ' ' + fmtE(p.actual) + '（前' + fmtE(p.prev) + '）', d));
+        newsScore += d === '利多' ? 1 : (d === '利空' ? -1 : 0);
+      });
+    }
+    // 4b) 即将公布的重要事件（未来 1-2 天内，提前提示风险）
+    const upcoming = (ecoFutureM || []).filter(f => f.date && ecoEventKeys.some(k => (f.title || '').includes(k)));
+    if (upcoming.length) {
+      newsRows.push('<div style="font-size:9px;color:var(--text-muted);padding-top:2px;">⏰ 即将公布</div>');
+      upcoming.slice(0, 2).forEach(f => {
+        newsRows.push(renderBasisRow((f.date || '').slice(5) + ' ' + ecoShort(f.title) + (f.time ? ' ' + (f.time || '').slice(0, 5) : ''), '中性'));
+      });
+    }
+    // 4c) 新闻快讯（软消息）
     if (newsItemsM.length) {
+      newsRows.push('<div style="font-size:9px;color:var(--text-muted);padding-top:2px;">📰 最新快讯</div>');
       newsItemsM.slice(0, 4).forEach(n => {
         newsRows.push(renderBasisRow(n.title.length > 28 ? n.title.slice(0, 28) + '…' : n.title, n.sent));
         newsScore += n.sent === '利多' ? 1 : (n.sent === '利空' ? -1 : 0);
@@ -2600,6 +2626,12 @@
     if (t.includes('失业率')) return { name: '失业率', star: 3 };
     return null;
   }
+  function ecoShort(t) {
+    // 简化东财经济数据标题："8月美国:新增非农就业人数:当月值:季调(千人)" → 简短名称（按优先级匹配，ADP 先于非农、核心先于总体）
+    const m = [['ADP', 'ADP就业'], ['非农', '非农就业'], ['失业率', '失业率'], ['核心CPI', '核心CPI'], ['CPI', 'CPI'], ['核心PCE', '核心PCE'], ['PCE', 'PCE'], ['利率决议', '利率决议'], ['联邦基金', '联邦基金利率'], ['初请', '初请失业金'], ['零售', '零售销售'], ['GDP', 'GDP']];
+    for (const kv of m) if (t.includes(kv[0])) return kv[1];
+    return t.slice(0, 16);
+  }
   function addMinutes(hhmm, mins) {
     // "HH:MM" 时间字符串加 mins 分钟（只算展示时间，不做跨日进位）
     const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
@@ -2623,7 +2655,7 @@
       if (Array.isArray(fedList)) fedList.forEach(e => { if (e.date >= tstr) events.push(e); });
     } catch (e) {}
     for (let pg = 1; pg <= 3; pg++) {
-      const flt = encodeURIComponent("(DAT_PUBLISHDATE>'" + tstr + " 00:00:00')");
+      const flt = encodeURIComponent("(DAT_PUBLISHDATE>='" + tstr + " 00:00:00')");
       const cb = '_fc_' + Date.now() + '_' + pg;
       const base = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=' + pg + '&pageSize=500&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=1&source=WEB&client=WEB';
       const j = await new Promise((resolve) => {
@@ -2646,6 +2678,8 @@
         if (!sim) continue;
         const evDate = String(d.DAT_PUBLISHDATE).slice(0, 10);
         const evTime = (d.STR_PUBLISHTIME || '').slice(0, 5);
+        // 今天已发布（实际值已录入）的事件跳过，避免与"已发布数据"列表重复
+        if (evDate === tstr && d.DEC_INDEXVALUE != null) continue;
         events.push({ date: evDate, time: evTime, name: sim.name, star: sim.star });
         // FOMC 利率决议 → 自动推导"主席新闻发布会"（决议后 30 分钟，永久自动更新，无需手动维护）
         if (sim.name === '美联储利率决议') {
@@ -2742,7 +2776,7 @@
       const n = new Date();
       const today = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
       // <=今天 + 倒序：最新已发布数据排前面（含刚公布的非农/CPI），实时刷新四卡与预测
-      const flt = encodeURIComponent("(DAT_PUBLISHDATE<='" + today + " 00:00:00')");
+      const flt = encodeURIComponent("(DAT_PUBLISHDATE<='" + today + " 23:59:59')");
       script.src = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_ECONOMICVALUE_ALL&columns=ALL&pageNumber=1&pageSize=300&filter=' + flt + '&sortColumns=DAT_PUBLISHDATE&sortTypes=-1&source=WEB&client=WEB&callback=' + cb + '&_=' + Date.now();
       window[cb] = (json) => {
         const rows = (json.result && json.result.data) || [];
